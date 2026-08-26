@@ -1,32 +1,29 @@
 import { useState } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation } from "react-router-dom";
 import { school } from "@/config/school";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
+import { authErrorMessage } from "@/utils/authErrors";
 
 export function LoginPage() {
-  const { signInWithGoogle, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+  const { signInWithGoogle, isAuthenticated, isVerified } = useAuth();
   const location = useLocation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const from = (location.state as { from?: string } | null)?.from ?? "/alumni";
 
-  if (isAuthenticated) return <Navigate to={from} replace />;
+  if (isAuthenticated) {
+    return <Navigate to={isVerified ? from : "/profile"} replace />;
+  }
 
   async function handleGoogle() {
     setBusy(true);
     setError(null);
     try {
       await signInWithGoogle();
-      navigate(from, { replace: true });
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Sign-in failed. Please try again.",
-      );
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }

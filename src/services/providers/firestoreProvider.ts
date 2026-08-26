@@ -13,8 +13,10 @@
  */
 import {
   GoogleAuthProvider,
+  getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
   signOut as fbSignOut,
   type User,
 } from "firebase/auth";
@@ -41,6 +43,7 @@ import {
 } from "firebase/firestore";
 import { getFirebase } from "@/services/firebase";
 import { isSuperAdminEmail } from "@/config/admins";
+import { shouldFallbackToRedirect } from "@/utils/authErrors";
 import { DEFAULT_FIELD_VISIBILITY, REQUIRED_APPROVALS } from "@/types";
 import type {
   AdminStats,
@@ -246,6 +249,11 @@ async function loadSession(user: User): Promise<Session> {
 export const firestoreAuthProvider: AuthProvider = {
   subscribe(listener) {
     const { auth } = getFirebase();
+    // Completes signInWithRedirect when the popup path was blocked (common on
+    // GitHub Pages because of Cross-Origin-Opener-Policy).
+    void getRedirectResult(auth).catch(() => {
+      // A failed redirect still leaves onAuthStateChanged as the source of truth.
+    });
     return onAuthStateChanged(auth, (user) => {
       if (!user) {
         listener(null);
@@ -253,16 +261,32 @@ export const firestoreAuthProvider: AuthProvider = {
       }
       loadSession(user)
         .then(listener)
-        .catch(() => listener(null));
+        .catch((err) => {
+          console.error("Failed to load the signed-in account", err);
+          void fbSignOut(auth);
+          listener(null);
+        });
     });
   },
 
   async signInWithGoogle() {
     const { auth } = getFirebase();
     const provider = new GoogleAuthProvider();
+    provider.addScope("email");
+    provider.addScope("profile");
     provider.setCustomParameters({ prompt: "select_account" });
-    const credential = await signInWithPopup(auth, provider);
-    return loadSession(credential.user);
+    try {
+      const credential = await signInWithPopup(auth, provider);
+      return loadSession(credential.user);
+    } catch (err) {
+      if (shouldFallbackToRedirect(err)) {
+        await signInWithRedirect(auth, provider);
+        return new Promise<Session>(() => {
+          /* The document unloads for Google; this promise is not meant to settle. */
+        });
+      }
+      throw err;
+    }
   },
 
   async signOut() {

@@ -20,6 +20,13 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
+    server: {
+      // Lets Firebase's Google popup call window.closed on the opener. Without
+      // this, Chrome logs a COOP warning and some browsers abort the popup.
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      },
+    },
     test: {
       globals: true,
       environment: 'jsdom',

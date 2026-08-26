@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import { school } from "@/config/school";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { REQUIRED_APPROVALS } from "@/types";
+import { authErrorMessage } from "@/utils/authErrors";
 
 export function RegisterPage() {
   const { signInWithGoogle, isAuthenticated } = useAuth();
-  const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,9 +19,8 @@ export function RegisterPage() {
     setError(null);
     try {
       await signInWithGoogle();
-      navigate("/profile", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign-up failed.");
+      setError(authErrorMessage(err));
     } finally {
       setBusy(false);
     }

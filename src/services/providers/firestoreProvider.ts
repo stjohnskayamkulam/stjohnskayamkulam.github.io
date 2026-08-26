@@ -393,7 +393,11 @@ export const firestoreDataProvider: DataProvider = {
 
   async updateProfile(uid, patch) {
     const { db } = getFirebase();
-    const next = pruneUndefined({ ...patch, updatedAt: serverTimestamp() });
+    const next: Record<string, unknown> = pruneUndefined({
+      ...patch,
+      updatedAt: serverTimestamp(),
+    });
+    // A cleared city must clear its pin too, or the map keeps the old location.
     if ("geo" in patch && patch.geo == null) {
       next.geo = deleteField();
     }

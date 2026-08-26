@@ -13,7 +13,7 @@ import { canSeeField, type Viewer } from "@/utils/visibility";
  * that says "Adoor" is not dumped on India's centroid.
  */
 export function useGeocodedPlaces(
-  entries: DirectoryEntry[] | undefined,
+  entries: DirectoryEntry[] | null | undefined,
   viewer: Viewer,
 ): Map<string, ResolvedLocation> {
   const [overrides, setOverrides] = useState(

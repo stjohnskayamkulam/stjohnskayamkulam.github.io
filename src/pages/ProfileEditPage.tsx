@@ -9,6 +9,13 @@ import { SelectField, TextAreaField, TextField } from "@/components/ui/Field";
 import { buttonClass } from "@/components/ui/buttonStyles";
 import { LoadingBlock } from "@/components/ui/States";
 import { HELP_OFFER_LABELS, type HelpOffer } from "@/types";
+import {
+  parseSchoolClass,
+  SCHOOL_CLASSES,
+  orderClasses,
+} from "@/config/schoolClasses";
+import { geocodePlace } from "@/data/geocode";
+import { resolveLocation } from "@/data/geo";
 import { cn } from "@/utils/cn";
 
 /** Comma-separated inputs are friendlier here than a tag widget. */
@@ -17,6 +24,19 @@ const splitList = (value: FormDataEntryValue | null): string[] =>
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+
+async function resolveProfileGeo(
+  city: string | undefined,
+  country: string | undefined,
+): Promise<{ lat: number; lon: number } | null> {
+  if (!city) return null;
+  const known = resolveLocation(city, country);
+  if (known?.precision === "city") {
+    return { lat: known.coords[0], lon: known.coords[1] };
+  }
+  const found = await geocodePlace(city, country);
+  return found ? { lat: found[0], lon: found[1] } : null;
+}
 
 export function ProfileEditPage() {
   const { session, loading, saveProfile } = useAuth();
@@ -53,15 +73,18 @@ export function ProfileEditPage() {
         lastName: String(form.get("lastName")),
         gradYear: Number(form.get("gradYear")),
         batch: String(form.get("batch") || "") || undefined,
-        yearsAttended: form.get("attendedFrom")
-          ? {
-              from: Number(form.get("attendedFrom")),
-              to: Number(form.get("attendedTo") || form.get("gradYear")),
-            }
-          : undefined,
+        yearsAttended: (() => {
+          const from = parseSchoolClass(form.get("attendedFrom"));
+          const to = parseSchoolClass(form.get("attendedTo")) ?? from;
+          return from && to ? orderClasses(from, to) : undefined;
+        })(),
         photoURL: String(form.get("photoURL") || "") || null,
         city: String(form.get("city") || "") || undefined,
         country: String(form.get("country") || "") || undefined,
+        geo: await resolveProfileGeo(
+          String(form.get("city") || "") || undefined,
+          String(form.get("country") || "") || undefined,
+        ),
         profession: String(form.get("profession") || "") || undefined,
         industry: String(form.get("industry") || "") || undefined,
         company: String(form.get("company") || "") || undefined,
@@ -150,18 +173,31 @@ export function ProfileEditPage() {
               label="Class / batch"
               defaultValue={profile.batch ?? ""}
             />
-            <TextField
+            <SelectField
               name="attendedFrom"
               label="Attended from"
-              type="number"
               defaultValue={profile.yearsAttended?.from ?? ""}
-            />
-            <TextField
+              hint="LKG, UKG, then classes 1 to 12."
+            >
+              <option value="">Select class</option>
+              {SCHOOL_CLASSES.map((schoolClass) => (
+                <option key={schoolClass} value={schoolClass}>
+                  {schoolClass}
+                </option>
+              ))}
+            </SelectField>
+            <SelectField
               name="attendedTo"
               label="Attended until"
-              type="number"
               defaultValue={profile.yearsAttended?.to ?? ""}
-            />
+            >
+              <option value="">Select class</option>
+              {SCHOOL_CLASSES.map((schoolClass) => (
+                <option key={schoolClass} value={schoolClass}>
+                  {schoolClass}
+                </option>
+              ))}
+            </SelectField>
           </div>
           <TextField
             name="photoURL"

@@ -54,6 +54,16 @@ describe("resolveLocation", () => {
     expect(result?.coords).toEqual(resolveLocation(null, "India")?.coords);
   });
 
+  it("pins Kayamkulam even when the country is typed as Kerala", () => {
+    const result = resolveLocation("Kayamkulam", "Kerala");
+    expect(result?.precision).toBe("city");
+    expect(result?.coords[0]).toBeCloseTo(9.17, 1);
+    expect(result?.coords[1]).toBeCloseTo(76.5, 1);
+    expect(resolveLocation("Kayamkulam, Kerala", "India")?.coords).toEqual(
+      result?.coords,
+    );
+  });
+
   it("covers city-states the map geometry omits", () => {
     // Singapore is absent from the 110m atlas, so it has to come from the table.
     expect(resolveLocation("Singapore", "Singapore")?.precision).toBe("city");

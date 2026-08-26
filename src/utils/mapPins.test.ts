@@ -96,6 +96,45 @@ describe("buildMapPins", () => {
     expect(pins[0].people).toHaveLength(2);
   });
 
+  it("uses stored profile coordinates instead of the country centroid", () => {
+    const { pins } = buildMapPins(
+      [
+        entry({
+          uid: "a",
+          city: "Adoor",
+          country: "India",
+          geo: { lat: 9.155, lon: 76.731 },
+        }),
+      ],
+      signedInViewer,
+    );
+
+    expect(pins).toHaveLength(1);
+    expect(pins[0].precision).toBe("city");
+    expect(pins[0].coords[0]).toBeCloseTo(9.155, 3);
+    expect(pins[0].coords[1]).toBeCloseTo(76.731, 3);
+  });
+
+  it("prefers a geocoded city over India's centroid", () => {
+    const extras = new Map([
+      [
+        "adoor|india",
+        {
+          coords: [9.155, 76.731] as const,
+          precision: "city" as const,
+        },
+      ],
+    ]);
+    const { pins } = buildMapPins(
+      [entry({ uid: "a", city: "Adoor", country: "India" })],
+      signedInViewer,
+      extras,
+    );
+
+    expect(pins[0].precision).toBe("city");
+    expect(pins[0].coords[1]).toBeCloseTo(76.731, 3);
+  });
+
   it("orders pins by headcount so the biggest communities read first", () => {
     const { pins } = buildMapPins(
       [

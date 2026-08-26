@@ -1,7 +1,10 @@
 import {
+  interpretPlace,
+  placeLookupKey,
   resolveLocation,
   type LatLon,
   type LocationPrecision,
+  type ResolvedLocation,
 } from "@/data/geo";
 import type { DirectoryEntry } from "@/types";
 import { canSeeField, type Viewer } from "./visibility";
@@ -55,9 +58,39 @@ function displayLocation(
   return [city, country].filter(Boolean).join(", ");
 }
 
+function resolvePin(
+  person: DirectoryEntry,
+  city: string | undefined,
+  country: string | undefined,
+  geocoded: Map<string, ResolvedLocation>,
+): ResolvedLocation | null {
+  if (
+    city &&
+    person.geo &&
+    Number.isFinite(person.geo.lat) &&
+    Number.isFinite(person.geo.lon)
+  ) {
+    return {
+      coords: [person.geo.lat, person.geo.lon],
+      precision: "city",
+    };
+  }
+
+  const resolved = resolveLocation(city, country);
+  if (resolved?.precision === "city") return resolved;
+
+  if (city) {
+    const extra = geocoded.get(placeLookupKey(city, country));
+    if (extra) return extra;
+  }
+
+  return resolved;
+}
+
 export function buildMapPins(
   entries: DirectoryEntry[],
   viewer: Viewer,
+  geocoded: Map<string, ResolvedLocation> = new Map(),
 ): PinBuildResult {
   const byCoords = new Map<string, MapPin>();
   let hidden = 0;
@@ -74,19 +107,18 @@ export function buildMapPins(
       continue;
     }
 
-    const resolved = resolveLocation(city, country);
+    const resolved = resolvePin(person, city, country, geocoded);
     if (!resolved) {
       unknown += 1;
       continue;
     }
 
-    // Group on the coordinate rather than the text, so "Bangalore" and
-    // "Bengaluru" land in one pin instead of two overlapping dots.
+    const place = interpretPlace(city, country);
     const id = `${resolved.coords[0]},${resolved.coords[1]}`;
     const label =
       resolved.precision === "city"
-        ? displayLocation(city, country)
-        : (country ?? "");
+        ? displayLocation(place.city || city, place.country || country)
+        : (place.country || country || "");
 
     const entry: MapPerson = {
       uid: person.uid,

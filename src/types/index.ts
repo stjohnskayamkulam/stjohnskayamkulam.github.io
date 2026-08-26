@@ -109,10 +109,13 @@ export interface AlumniProfile {
   gradYear: number;
   /** Section/house/stream within the year, e.g. "12-A". */
   batch?: string;
-  yearsAttended?: { from: number; to: number };
+  /** Classes attended at school (LKG, UKG, 1–12), not calendar years. */
+  yearsAttended?: { from: string; to: string };
 
   city?: string;
   country?: string;
+  /** City-centre pin written when the profile is saved. */
+  geo?: { lat: number; lon: number } | null;
   profession?: string;
   industry?: string;
   company?: string;

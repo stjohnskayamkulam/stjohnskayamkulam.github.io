@@ -93,6 +93,13 @@ const CITY_TABLE: Record<string, LatLon> = {
   "calicut|india": [11.2588, 75.7804],
   "kollam|india": [8.8932, 76.6141],
   "alappuzha|india": [9.4981, 76.3388],
+  "alleppey|india": [9.4981, 76.3388],
+  "kayamkulam|india": [9.1718, 76.5013],
+  "kayankulam|india": [9.1718, 76.5013],
+  "mavelikkara|india": [9.267, 76.556],
+  "haripad|india": [9.28, 76.458],
+  "chengannur|india": [9.3156, 76.613],
+  "peringala|india": [9.185, 76.511],
   "palakkad|india": [10.7867, 76.6548],
   "kannur|india": [11.8745, 75.3704],
   "malappuram|india": [11.041, 76.0788],
@@ -372,7 +379,105 @@ const COUNTRY_TABLE: Record<string, LatLon> = {
   colombia: [4.5709, -74.2973],
 };
 
-/** How precisely a person could be placed. Surfaced in the map's tooltip. */
+/**
+ * Indian states and UTs people type into the country field. The gazetteer keys
+ * cities by country, so "Kayamkulam" + "Kerala" must resolve as India.
+ */
+const INDIAN_STATES = new Set([
+  "andhra pradesh",
+  "arunachal pradesh",
+  "assam",
+  "bihar",
+  "chhattisgarh",
+  "goa",
+  "gujarat",
+  "haryana",
+  "himachal pradesh",
+  "jharkhand",
+  "karnataka",
+  "kerala",
+  "madhya pradesh",
+  "maharashtra",
+  "manipur",
+  "meghalaya",
+  "mizoram",
+  "nagaland",
+  "odisha",
+  "orissa",
+  "punjab",
+  "rajasthan",
+  "sikkim",
+  "tamil nadu",
+  "telangana",
+  "tripura",
+  "uttar pradesh",
+  "uttarakhand",
+  "west bengal",
+  "delhi",
+  "nct of delhi",
+  "puducherry",
+  "pondicherry",
+  "chandigarh",
+  "ladakh",
+  "jammu and kashmir",
+  "andaman and nicobar islands",
+  "lakshadweep",
+]);
+
+function isGazetteerCity(normalized: string): boolean {
+  const prefix = `${normalized}|`;
+  return Object.keys(CITY_TABLE).some((key) => key.startsWith(prefix));
+}
+
+function isKnownCountry(normalized: string): boolean {
+  if (!normalized) return false;
+  const aliased = COUNTRY_ALIASES[normalized] ?? normalized;
+  return Boolean(COUNTRY_TABLE[aliased]);
+}
+
+/**
+ * Pulls a city and a country out of the free-text pair people actually type:
+ * "Kayamkulam" + "Kerala", or both in the city box as "Kayamkulam, India".
+ */
+export function interpretPlace(
+  city: string | undefined | null,
+  country: string | undefined | null,
+): { city: string; country: string } {
+  const tokens: string[] = [];
+  for (const raw of [city, country]) {
+    if (!raw) continue;
+    for (const part of raw.split(/[,/|]/)) {
+      const token = part.trim();
+      if (token) tokens.push(token);
+    }
+  }
+
+  let cityName = "";
+  let countryName = "";
+  for (const token of tokens) {
+    const normalized = normalizePlace(token);
+    if (INDIAN_STATES.has(normalized)) {
+      if (!countryName) countryName = "India";
+      continue;
+    }
+    if (isKnownCountry(normalized)) {
+      countryName = token;
+      if (!cityName && isGazetteerCity(normalized)) cityName = token;
+      continue;
+    }
+    if (!cityName) cityName = token;
+  }
+  return { city: cityName, country: countryName };
+}
+
+export function placeLookupKey(
+  city: string | undefined | null,
+  country: string | undefined | null,
+): string {
+  const place = interpretPlace(city, country);
+  return `${normalizePlace(place.city)}|${canonicalCountry(place.country)}`;
+}
+
 export type LocationPrecision = "city" | "country";
 
 export interface ResolvedLocation {
@@ -402,8 +507,9 @@ export function resolveLocation(
   city: string | undefined | null,
   country: string | undefined | null,
 ): ResolvedLocation | null {
-  const cityKey = normalizePlace(city);
-  const countryKey = canonicalCountry(country);
+  const place = interpretPlace(city, country);
+  const cityKey = normalizePlace(place.city);
+  const countryKey = canonicalCountry(place.country);
 
   if (cityKey && countryKey) {
     const exact = CITY_TABLE[`${cityKey}|${countryKey}`];

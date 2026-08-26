@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { SelectField } from "@/components/ui/Field";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
 import { buildMapPins, type MapPin as Pin } from "@/utils/mapPins";
+import { useGeocodedPlaces } from "@/hooks/useGeocodedPlaces";
 import type { Viewer } from "@/utils/visibility";
 
 /**
@@ -43,16 +44,18 @@ export function MapPage() {
     [session, isAdmin],
   );
 
+  const geocoded = useGeocodedPlaces(alumni.data, viewer);
+
   const { pins, unplaced, totalPlaced } = useMemo(() => {
     const entries = (alumni.data ?? []).filter(
       (person) => gradYear == null || person.gradYear === gradYear,
     );
-    const result = buildMapPins(entries, viewer);
+    const result = buildMapPins(entries, viewer, geocoded);
     return {
       ...result,
       totalPlaced: result.pins.reduce((sum, pin) => sum + pin.people.length, 0),
     };
-  }, [alumni.data, gradYear, viewer]);
+  }, [alumni.data, gradYear, viewer, geocoded]);
 
   const selectedPin = pins.find((pin) => pin.id === selectedPinId) ?? null;
 

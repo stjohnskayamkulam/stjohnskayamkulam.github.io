@@ -26,6 +26,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  deleteField,
   getCountFromServer,
   getDoc,
   getDocs,
@@ -43,6 +44,7 @@ import {
 } from "firebase/firestore";
 import { getFirebase } from "@/services/firebase";
 import { isSuperAdminEmail } from "@/config/admins";
+import { parseClassesAttended } from "@/config/schoolClasses";
 import { shouldFallbackToRedirect } from "@/utils/authErrors";
 import { DEFAULT_FIELD_VISIBILITY, REQUIRED_APPROVALS } from "@/types";
 import type {
@@ -113,9 +115,13 @@ function toProfile(uid: string, data: DocumentData): AlumniProfile {
     photoURL: data.photoURL ?? null,
     gradYear: Number(data.gradYear) || 0,
     batch: data.batch,
-    yearsAttended: data.yearsAttended,
+    yearsAttended: parseClassesAttended(data.yearsAttended),
     city: data.city,
     country: data.country,
+    geo:
+      typeof data.geo?.lat === "number" && typeof data.geo?.lon === "number"
+        ? { lat: data.geo.lat, lon: data.geo.lon }
+        : undefined,
     profession: data.profession,
     industry: data.industry,
     company: data.company,
@@ -388,6 +394,9 @@ export const firestoreDataProvider: DataProvider = {
   async updateProfile(uid, patch) {
     const { db } = getFirebase();
     const next = pruneUndefined({ ...patch, updatedAt: serverTimestamp() });
+    if ("geo" in patch && patch.geo == null) {
+      next.geo = deleteField();
+    }
     if (patch.firstName || patch.lastName) {
       const existing = await this.getProfile(uid);
       const fullName = `${patch.firstName ?? existing?.firstName ?? ""} ${

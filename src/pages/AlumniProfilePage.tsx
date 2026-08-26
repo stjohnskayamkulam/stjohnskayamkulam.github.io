@@ -17,6 +17,10 @@ import { buttonClass } from "@/components/ui/buttonStyles";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
 import { canSeeField } from "@/utils/visibility";
 import { HELP_OFFER_LABELS, type AlumniProfile } from "@/types";
+import {
+  formatClassesAttended,
+  parseClassesAttended,
+} from "@/config/schoolClasses";
 
 export function AlumniProfilePage() {
   const { uid = "" } = useParams();
@@ -44,6 +48,7 @@ export function AlumniProfilePage() {
 
   const person = profile.data;
   const isSelf = session?.account.uid === person.uid;
+  const attended = parseClassesAttended(person.yearsAttended);
 
   /** Shared with the alumni map so a hidden field cannot leak through one screen. */
   const canSee = (field: keyof AlumniProfile["fieldVisibility"]): boolean =>
@@ -171,10 +176,10 @@ export function AlumniProfilePage() {
         <aside className="space-y-8">
           <Panel title="At school">
             <dl className="space-y-3 text-sm">
-              {person.yearsAttended && (
+              {attended && (
                 <Row
-                  label="Years attended"
-                  value={`${person.yearsAttended.from}–${person.yearsAttended.to}`}
+                  label="Attended"
+                  value={formatClassesAttended(attended)}
                 />
               )}
               <Row label="Graduated" value={String(person.gradYear)} />

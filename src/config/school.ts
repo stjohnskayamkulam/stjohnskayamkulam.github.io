@@ -17,6 +17,7 @@ export interface SchoolTheme {
   location: string;
   tagline: string;
   contactEmail: string;
+  contactPhone: string;
   /** Facebook page, linked from the footer. Empty hides the link. */
   facebookUrl: string;
   /** Used as the hero backdrop; a local file under `public/` also works. */
@@ -32,10 +33,11 @@ export const school: SchoolTheme = {
   primaryColor: env.VITE_SCHOOL_PRIMARY_COLOR || "#0f4c5c",
   secondaryColor: env.VITE_SCHOOL_SECONDARY_COLOR || "#9a3412",
   accentColor: env.VITE_SCHOOL_ACCENT_COLOR || "#f4d58d",
-  foundedYear: Number(env.VITE_SCHOOL_FOUNDED_YEAR) || 1956,
-  location: env.VITE_SCHOOL_LOCATION || "Kerala, India",
-  tagline: env.VITE_SCHOOL_TAGLINE || "Reconnect. Remember. Give Back.",
+  foundedYear: Number(env.VITE_SCHOOL_FOUNDED_YEAR) || 1977,
+  location: env.VITE_SCHOOL_LOCATION || "Kayamkulam, Kerala",
+  tagline: env.VITE_SCHOOL_TAGLINE || "We Nurture Dreams!",
   contactEmail: env.VITE_SCHOOL_CONTACT_EMAIL || "alumni@example.org",
+  contactPhone: env.VITE_SCHOOL_CONTACT_PHONE || "+91 94957 42287",
   facebookUrl:
     env.VITE_SCHOOL_FACEBOOK_URL ||
     "https://www.facebook.com/p/St-Johns-School-61554640262725/",

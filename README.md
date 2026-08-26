@@ -32,8 +32,8 @@ against an in-memory backend seeded with 28 alumni across five decades and six
 events — so every screen is worth looking at immediately.
 
 In this mock mode, **Continue with Google** signs you in as an administrator so
-the admin dashboard is reachable. Signing in by email
-works with any seeded address, for example `maria.thomas@example.com`.
+the admin dashboard is reachable. There is no email-and-password sign-in —
+Google is the only method, in demo and against Firebase alike.
 
 ### Commands
 
@@ -193,7 +193,8 @@ type. Do this before storing phone numbers for a real cohort.
 ### Setting up Firebase
 
 1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
-2. **Authentication → Sign-in method**: enable Google and Email/Password.
+2. **Authentication → Sign-in method**: enable **Google** only. Email/password
+   stays off.
 3. **Firestore Database**: create in production mode.
 4. Add a Web app, copy the config into `.env.local` (see `.env.example`).
 5. Deploy the rules and indexes:

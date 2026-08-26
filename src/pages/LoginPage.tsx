@@ -4,10 +4,9 @@ import { dataBackend } from "@/config/env";
 import { school } from "@/config/school";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
-import { TextField } from "@/components/ui/Field";
 
 export function LoginPage() {
-  const { signInWithEmail, signInWithGoogle, isAuthenticated } = useAuth();
+  const { signInWithGoogle, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [busy, setBusy] = useState(false);
@@ -17,11 +16,11 @@ export function LoginPage() {
 
   if (isAuthenticated) return <Navigate to={from} replace />;
 
-  async function run(action: () => Promise<void>) {
+  async function handleGoogle() {
     setBusy(true);
     setError(null);
     try {
-      await action();
+      await signInWithGoogle();
       navigate(from, { replace: true });
     } catch (err) {
       setError(
@@ -47,73 +46,30 @@ export function LoginPage() {
             Welcome back
           </h1>
           <p className="mt-2 text-ink-soft">
-            Sign in to find your people again.
+            Sign in with Google to find your people again.
           </p>
         </div>
 
         <div className="card space-y-5 p-7">
           <Button
-            variant="outline"
             className="w-full"
             loading={busy}
-            onClick={() => run(signInWithGoogle)}
+            onClick={() => void handleGoogle()}
           >
             Continue with Google
           </Button>
-
-          <div className="flex items-center gap-3 text-xs text-ink-soft">
-            <span className="h-px flex-1 bg-black/10" />
-            or use your email
-            <span className="h-px flex-1 bg-black/10" />
-          </div>
-
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              const form = new FormData(e.currentTarget);
-              void run(() =>
-                signInWithEmail(
-                  String(form.get("email")),
-                  String(form.get("password")),
-                ),
-              );
-            }}
-          >
-            <TextField
-              name="email"
-              type="email"
-              label="Email"
-              required
-              autoComplete="email"
-            />
-            <TextField
-              name="password"
-              type="password"
-              label="Password"
-              required
-              autoComplete="current-password"
-            />
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button type="submit" className="w-full" loading={busy}>
-              Sign in
-            </Button>
-          </form>
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
           {dataBackend === "mock" && (
             <p className="rounded-xl bg-accent-soft/40 p-3 text-xs text-ink-soft">
-              Demo mode: no Firebase project is configured, so any password
-              works. Try{" "}
-              <code className="font-medium">maria.thomas@example.com</code> for
-              an administrator account, or{" "}
-              <code className="font-medium">karthik.reddy@example.com</code> for
-              an ordinary member.
+              Demo mode: Continue with Google signs you in as an administrator
+              so every screen is reachable.
             </p>
           )}
         </div>
 
         <p className="mt-6 text-center text-sm text-ink-soft">
-          Not registered yet?{" "}
+          First time here?{" "}
           <Link
             to="/register"
             className="font-medium text-brand hover:underline"

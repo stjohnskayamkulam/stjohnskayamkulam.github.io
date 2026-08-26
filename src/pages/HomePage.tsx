@@ -52,8 +52,9 @@ export function HomePage() {
           </p>
 
           <p className="mx-auto mt-6 max-w-xl text-white/80">
-            Find the people you sat next to, the ones who moved away, and the
-            ones who never left.
+            The alumni network of St. John&apos;s School, Peringala P.O.,
+            Kayamkulam. Find the people you sat next to, the ones who moved
+            away, and the ones who never left.
           </p>
 
           <div className="mt-10 flex flex-wrap justify-center gap-3">

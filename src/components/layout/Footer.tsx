@@ -23,9 +23,9 @@ export function Footer() {
             </span>
           </div>
           <p className="mt-4 max-w-md text-sm text-ink-soft">
-            The alumni network of {school.schoolName}, {school.location}.
-            Founded in {school.foundedYear}, and still the place where a
-            surprising number of lifelong friendships started.
+            The alumni network of {school.schoolName}, Peringala P.O.,{" "}
+            {school.location}. Established {school.foundedYear}.{" "}
+            {school.tagline}
           </p>
         </div>
 
@@ -45,6 +45,16 @@ export function Footer() {
         <div>
           <h3 className="text-sm font-semibold text-ink">Get in touch</h3>
           <ul className="mt-4 space-y-2.5 text-sm text-ink-soft">
+            {school.contactPhone && (
+              <li>
+                <a
+                  href={`tel:${school.contactPhone.replace(/\s+/g, "")}`}
+                  className="hover:text-brand"
+                >
+                  {school.contactPhone}
+                </a>
+              </li>
+            )}
             <li>
               <a
                 href={`mailto:${school.contactEmail}`}

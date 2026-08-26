@@ -23,6 +23,7 @@ interface ImportMetaEnv {
   readonly VITE_SCHOOL_LOCATION?: string;
   readonly VITE_SCHOOL_TAGLINE?: string;
   readonly VITE_SCHOOL_CONTACT_EMAIL?: string;
+  readonly VITE_SCHOOL_CONTACT_PHONE?: string;
   readonly VITE_SCHOOL_FACEBOOK_URL?: string;
   readonly VITE_SCHOOL_HERO_IMAGE?: string;
 }

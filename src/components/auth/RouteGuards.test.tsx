@@ -21,8 +21,6 @@ function contextFor(tier: Tier): AuthContextValue {
     isVerified: tier === "verified" || tier === "admin",
     isAdmin: tier === "admin",
     signInWithGoogle: noop,
-    signInWithEmail: noop,
-    register: noop,
     signOut: noop,
     refresh: noop,
     saveProfile: noop,

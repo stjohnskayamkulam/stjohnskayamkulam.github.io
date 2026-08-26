@@ -42,11 +42,11 @@ export function AboutPage() {
         <section>
           <h2 className="text-2xl font-semibold">Who can join</h2>
           <p className="mt-4 leading-relaxed text-ink-soft">
-            Anyone who attended {school.schoolName}. Registration is open, but
-            every new member is checked by a volunteer on the alumni committee
-            before the directory unlocks. That verification step is deliberate:
-            people share where they live and what they do here, and it should
-            only be visible to people who actually went to the school.
+            Anyone who attended {school.schoolName}. Sign-in is Google only, and
+            every new member needs two existing alumni to vouch for them before
+            the directory unlocks. That step is deliberate: people share where
+            they live and what they do here, and it should only be visible to
+            people who actually went to the school.
           </p>
         </section>
 

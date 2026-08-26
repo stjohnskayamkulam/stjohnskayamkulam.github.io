@@ -13,12 +13,9 @@
  */
 import {
   GoogleAuthProvider,
-  createUserWithEmailAndPassword,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
   signInWithPopup,
   signOut as fbSignOut,
-  updateProfile as updateAuthProfile,
   type User,
 } from "firebase/auth";
 import {
@@ -36,7 +33,6 @@ import {
   query,
   runTransaction,
   serverTimestamp,
-  setDoc,
   updateDoc,
   where,
   writeBatch,
@@ -61,7 +57,6 @@ import type {
   AuthProvider,
   DataProvider,
   DirectoryFacets,
-  RegistrationInput,
   Session,
 } from "./types";
 
@@ -151,21 +146,51 @@ async function loadSession(user: User): Promise<Session> {
   const accountSnap = await getDoc(accountRef);
 
   if (!accountSnap.exists()) {
-    // First sign-in through a federated provider: create the pending account.
-    const account: Omit<UserAccount, "createdAt"> & { createdAt: unknown } = {
-      uid: user.uid,
-      email: user.email ?? "",
-      displayName: user.displayName ?? user.email ?? "New member",
-      photoURL: user.photoURL,
-      role: "member",
-      status: "pending",
-      createdAt: serverTimestamp(),
-    };
-    await setDoc(accountRef, pruneUndefined(account));
-    return {
-      account: toAccount(user.uid, account as DocumentData),
-      profile: null,
-    };
+    // First Google sign-in: create the pending account and a stub profile so
+    // the applicant can finish their details and appear in the approval queue.
+    const displayName = user.displayName ?? user.email ?? "New member";
+    const nameParts = displayName.trim().split(/\s+/);
+    const firstName = nameParts[0] || "New";
+    const lastName = nameParts.slice(1).join(" ") || "Member";
+    const fullName = `${firstName} ${lastName}`.trim();
+    const batch = writeBatch(db);
+    batch.set(
+      accountRef,
+      pruneUndefined({
+        uid: user.uid,
+        email: user.email ?? "",
+        displayName,
+        photoURL: user.photoURL,
+        role: "member",
+        status: "pending",
+        createdAt: serverTimestamp(),
+      }),
+    );
+    batch.set(
+      doc(db, "profiles", user.uid),
+      pruneUndefined({
+        uid: user.uid,
+        firstName,
+        lastName,
+        fullName,
+        searchName: fullName.toLowerCase(),
+        gradYear: new Date().getFullYear(),
+        photoURL: user.photoURL,
+        email: user.email ?? "",
+        interests: [],
+        activities: [],
+        clubs: [],
+        helpOffers: [],
+        visibility: "alumni",
+        fieldVisibility: DEFAULT_FIELD_VISIBILITY,
+        status: "pending",
+        approvedBy: [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+    await batch.commit();
+    return loadSession(user);
   }
 
   const profileSnap = await getDoc(doc(db, "profiles", user.uid));
@@ -194,64 +219,6 @@ export const firestoreAuthProvider: AuthProvider = {
   async signInWithGoogle() {
     const { auth } = getFirebase();
     const credential = await signInWithPopup(auth, new GoogleAuthProvider());
-    return loadSession(credential.user);
-  },
-
-  async signInWithEmail(email, password) {
-    const { auth } = getFirebase();
-    const credential = await signInWithEmailAndPassword(auth, email, password);
-    return loadSession(credential.user);
-  },
-
-  async register(input: RegistrationInput) {
-    const { auth, db } = getFirebase();
-    const credential = await createUserWithEmailAndPassword(
-      auth,
-      input.email,
-      input.password,
-    );
-    const uid = credential.user.uid;
-    const fullName = `${input.firstName} ${input.lastName}`.trim();
-    await updateAuthProfile(credential.user, { displayName: fullName });
-
-    // The account and profile are written together; security rules force
-    // role='member' and status='pending' on self-creation.
-    const batch = writeBatch(db);
-    batch.set(
-      doc(db, "users", uid),
-      pruneUndefined({
-        uid,
-        email: input.email,
-        displayName: fullName,
-        photoURL: null,
-        role: "member",
-        status: "pending",
-        createdAt: serverTimestamp(),
-      }),
-    );
-    batch.set(
-      doc(db, "profiles", uid),
-      pruneUndefined({
-        uid,
-        firstName: input.firstName,
-        lastName: input.lastName,
-        fullName,
-        searchName: fullName.toLowerCase(),
-        gradYear: input.gradYear,
-        batch: input.batch,
-        interests: [],
-        activities: [],
-        clubs: [],
-        helpOffers: [],
-        visibility: "alumni",
-        fieldVisibility: DEFAULT_FIELD_VISIBILITY,
-        status: "pending",
-        approvedBy: [],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }),
-    );
-    await batch.commit();
     return loadSession(credential.user);
   },
 

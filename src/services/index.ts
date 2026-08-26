@@ -35,5 +35,4 @@ export type {
   AuthProvider,
   DataProvider,
   Session,
-  RegistrationInput,
 } from "./providers/types";

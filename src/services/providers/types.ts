@@ -25,21 +25,10 @@ export interface Session {
   profile: AlumniProfile | null;
 }
 
-export interface RegistrationInput {
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  gradYear: number;
-  batch?: string;
-}
-
 export interface AuthProvider {
   /** Fires immediately with the current session, then on every change. */
   subscribe(listener: (session: Session | null) => void): () => void;
   signInWithGoogle(): Promise<Session>;
-  signInWithEmail(email: string, password: string): Promise<Session>;
-  register(input: RegistrationInput): Promise<Session>;
   signOut(): Promise<void>;
   /** Re-reads the account/profile pair, e.g. after an admin verifies someone. */
   refresh(): Promise<Session | null>;

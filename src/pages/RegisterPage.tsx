@@ -4,39 +4,24 @@ import { ShieldCheck } from "lucide-react";
 import { school } from "@/config/school";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
-import { TextField } from "@/components/ui/Field";
-
-const THIS_YEAR = new Date().getFullYear();
+import { REQUIRED_APPROVALS } from "@/types";
 
 export function RegisterPage() {
-  const { register, signInWithGoogle, isAuthenticated } = useAuth();
+  const { signInWithGoogle, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (isAuthenticated) return <Navigate to="/profile" replace />;
 
-  async function handleSubmit(formEvent: React.FormEvent<HTMLFormElement>) {
-    formEvent.preventDefault();
-    const form = new FormData(formEvent.currentTarget);
+  async function handleGoogle() {
     setBusy(true);
     setError(null);
     try {
-      await register({
-        email: String(form.get("email")),
-        password: String(form.get("password")),
-        firstName: String(form.get("firstName")),
-        lastName: String(form.get("lastName")),
-        gradYear: Number(form.get("gradYear")),
-        batch: String(form.get("batch") || "") || undefined,
-      });
+      await signInWithGoogle();
       navigate("/profile", { replace: true });
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Registration failed. Please try again.",
-      );
+      setError(err instanceof Error ? err.message : "Sign-up failed.");
     } finally {
       setBusy(false);
     }
@@ -55,92 +40,20 @@ export function RegisterPage() {
             Join the alumni network
           </h1>
           <p className="mt-2 text-ink-soft">
-            One profile is all it takes for an old classmate to find you.
+            Sign in with Google. One profile is all it takes for an old
+            classmate to find you.
           </p>
         </div>
 
         <div className="card space-y-5 p-7">
           <Button
-            variant="outline"
             className="w-full"
             loading={busy}
-            onClick={async () => {
-              setBusy(true);
-              setError(null);
-              try {
-                await signInWithGoogle();
-                navigate("/profile", { replace: true });
-              } catch (err) {
-                setError(
-                  err instanceof Error ? err.message : "Sign-up failed.",
-                );
-              } finally {
-                setBusy(false);
-              }
-            }}
+            onClick={() => void handleGoogle()}
           >
             Continue with Google
           </Button>
-
-          <div className="flex items-center gap-3 text-xs text-ink-soft">
-            <span className="h-px flex-1 bg-black/10" />
-            or register with email
-            <span className="h-px flex-1 bg-black/10" />
-          </div>
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                name="firstName"
-                label="First name"
-                required
-                autoComplete="given-name"
-              />
-              <TextField
-                name="lastName"
-                label="Last name"
-                required
-                autoComplete="family-name"
-              />
-              <TextField
-                name="gradYear"
-                label="Graduation year"
-                type="number"
-                required
-                min={school.foundedYear}
-                max={THIS_YEAR}
-                placeholder="2002"
-              />
-              <TextField
-                name="batch"
-                label="Class / batch"
-                placeholder="12-A (optional)"
-              />
-            </div>
-
-            <TextField
-              name="email"
-              type="email"
-              label="Email"
-              required
-              autoComplete="email"
-            />
-            <TextField
-              name="password"
-              type="password"
-              label="Password"
-              required
-              minLength={8}
-              autoComplete="new-password"
-              hint="At least 8 characters."
-            />
-
-            {error && <p className="text-sm text-red-600">{error}</p>}
-
-            <Button type="submit" className="w-full" loading={busy}>
-              Create my account
-            </Button>
-          </form>
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-3 rounded-xl bg-brand-soft/50 p-4 text-sm text-ink-soft">
             <ShieldCheck
@@ -148,9 +61,9 @@ export function RegisterPage() {
               aria-hidden
             />
             <p>
-              New members are verified by a volunteer from the alumni committee
-              before the directory opens up. This keeps the network to actual
-              alumni, which is the whole point.
+              New members stay pending until {REQUIRED_APPROVALS} existing
+              alumni vouch for them. Complete your profile with your batch so
+              people from your year can recognise you.
             </p>
           </div>
         </div>

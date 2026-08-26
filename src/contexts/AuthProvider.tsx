@@ -7,7 +7,7 @@ import {
 } from "react";
 import * as authService from "@/services/authService";
 import { updateProfile } from "@/services/alumniService";
-import type { RegistrationInput, Session } from "@/services/providers/types";
+import type { Session } from "@/services/providers/types";
 import type { AlumniProfile } from "@/types";
 import { isSessionVerified } from "@/services/membershipService";
 import { AuthContext, type AuthContextValue } from "./authContext";
@@ -26,17 +26,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     setSession(await authService.signInWithGoogle());
-  }, []);
-
-  const signInWithEmail = useCallback(
-    async (email: string, password: string) => {
-      setSession(await authService.signInWithEmail(email, password));
-    },
-    [],
-  );
-
-  const register = useCallback(async (input: RegistrationInput) => {
-    setSession(await authService.register(input));
   }, []);
 
   const signOut = useCallback(async () => {
@@ -65,8 +54,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isVerified: isSessionVerified(session),
       isAdmin: session?.account.role === "admin",
       signInWithGoogle,
-      signInWithEmail,
-      register,
       signOut,
       refresh,
       saveProfile,
@@ -75,8 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       signInWithGoogle,
-      signInWithEmail,
-      register,
       signOut,
       refresh,
       saveProfile,

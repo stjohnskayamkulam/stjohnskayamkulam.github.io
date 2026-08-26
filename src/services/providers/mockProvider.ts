@@ -13,7 +13,7 @@ import {
   seedProfiles,
   seedUsers,
 } from "@/data/seed";
-import { DEFAULT_FIELD_VISIBILITY, REQUIRED_APPROVALS } from "@/types";
+import { REQUIRED_APPROVALS } from "@/types";
 import type {
   AdminStats,
   AlumniFilters,
@@ -24,14 +24,12 @@ import type {
   EventAttendee,
   MembershipStatus,
   SchoolEvent,
-  UserAccount,
 } from "@/types";
 import { isUpcoming } from "@/utils/date";
 import type {
   AuthProvider,
   DataProvider,
   DirectoryFacets,
-  RegistrationInput,
   Session,
 } from "./types";
 
@@ -128,71 +126,6 @@ export const mockAuthProvider: AuthProvider = {
     writeStoredUid(session.account.uid);
     emit(session);
     return session;
-  },
-
-  async signInWithEmail(email) {
-    const account = db.accounts.find(
-      (a) => a.email.toLowerCase() === email.trim().toLowerCase(),
-    );
-    if (!account) {
-      throw new Error(
-        'No account found for that email. In demo mode try maria.thomas@example.com, or use "Continue with Google".',
-      );
-    }
-    const session = buildSession(account.uid);
-    if (!session) throw new Error("Account is incomplete");
-    writeStoredUid(account.uid);
-    emit(session);
-    return session;
-  },
-
-  async register(input: RegistrationInput) {
-    const exists = db.accounts.some(
-      (a) => a.email.toLowerCase() === input.email.toLowerCase(),
-    );
-    if (exists) throw new Error("An account with that email already exists.");
-
-    const uid = nextId("u");
-    const now = new Date().toISOString();
-    const fullName = `${input.firstName} ${input.lastName}`.trim();
-
-    const account: UserAccount = {
-      uid,
-      email: input.email,
-      displayName: fullName,
-      photoURL: null,
-      role: "member",
-      // Every new registration starts unverified — see `docs`/README on verification.
-      status: "pending",
-      createdAt: now,
-    };
-    const profile: AlumniProfile = {
-      uid,
-      firstName: input.firstName,
-      lastName: input.lastName,
-      fullName,
-      searchName: fullName.toLowerCase(),
-      gradYear: input.gradYear,
-      batch: input.batch,
-      interests: [],
-      activities: [],
-      clubs: [],
-      helpOffers: [],
-      email: input.email,
-      visibility: "alumni",
-      fieldVisibility: { ...DEFAULT_FIELD_VISIBILITY },
-      status: "pending",
-      approvedBy: [],
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    db.accounts.push(account);
-    db.profiles.push(profile);
-    writeStoredUid(uid);
-    const session = { account, profile };
-    emit(clone(session));
-    return clone(session);
   },
 
   async signOut() {

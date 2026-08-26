@@ -1,6 +1,6 @@
 /** Authentication facade. Adds analytics; owns no state of its own. */
 import { getAuthProvider } from "@/services";
-import type { RegistrationInput, Session } from "@/services/providers/types";
+import type { Session } from "@/services/providers/types";
 import { track } from "@/utils/analytics";
 
 export function subscribeToSession(
@@ -23,23 +23,6 @@ export function subscribeToSession(
 export async function signInWithGoogle(): Promise<Session> {
   const session = await (await getAuthProvider()).signInWithGoogle();
   track("login", { method: "google", status: session.account.status });
-  return session;
-}
-
-export async function signInWithEmail(
-  email: string,
-  password: string,
-): Promise<Session> {
-  const session = await (
-    await getAuthProvider()
-  ).signInWithEmail(email, password);
-  track("login", { method: "password", status: session.account.status });
-  return session;
-}
-
-export async function register(input: RegistrationInput): Promise<Session> {
-  const session = await (await getAuthProvider()).register(input);
-  track("registration", { gradYear: input.gradYear });
   return session;
 }
 

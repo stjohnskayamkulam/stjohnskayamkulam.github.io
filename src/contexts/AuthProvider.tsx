@@ -9,6 +9,7 @@ import * as authService from "@/services/authService";
 import { updateProfile } from "@/services/alumniService";
 import type { Session } from "@/services/providers/types";
 import type { AlumniProfile } from "@/types";
+import { isStaffAccount } from "@/config/admins";
 import { isSessionVerified } from "@/services/membershipService";
 import { AuthContext, type AuthContextValue } from "./authContext";
 
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       isAuthenticated: Boolean(session),
       isVerified: isSessionVerified(session),
-      isAdmin: session?.account.role === "admin",
+      isAdmin: Boolean(session && isStaffAccount(session.account)),
       signInWithGoogle,
       signOut,
       refresh,

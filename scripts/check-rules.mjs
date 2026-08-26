@@ -213,6 +213,48 @@ const checks = [
       );
     },
   ],
+  [
+    'the bootstrap Google email may create itself as superadmin',
+    async () => {
+      const email = 'jue.george@gmail.com';
+      const uid = 'bootstrap';
+      const db = env.authenticatedContext(uid, { email }).firestore();
+      await assertSucceeds(
+        setDoc(doc(db, 'users', uid), {
+          uid,
+          email,
+          displayName: 'Jue',
+          role: 'superadmin',
+          status: 'verified',
+        }),
+      );
+      await assertSucceeds(
+        setDoc(doc(db, 'profiles', uid), {
+          uid,
+          firstName: 'Jue',
+          lastName: 'George',
+          gradYear: 2001,
+          visibility: 'alumni',
+          status: 'verified',
+          approvedBy: [],
+        }),
+      );
+    },
+  ],
+  [
+    'anyone else is refused a superadmin self-create',
+    async () => {
+      await assertFails(
+        setDoc(doc(as('stranger'), 'users', 'stranger'), {
+          uid: 'stranger',
+          email: 'stranger@example.test',
+          displayName: 'Stranger',
+          role: 'superadmin',
+          status: 'verified',
+        }),
+      );
+    },
+  ],
 ];
 
 let failed = 0;

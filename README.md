@@ -28,12 +28,9 @@ npm run dev
 ```
 
 That's the whole setup. With no Firebase credentials present the app runs
-against an in-memory backend seeded with 28 alumni across five decades and six
-events — so every screen is worth looking at immediately.
-
-In this mock mode, **Continue with Google** signs you in as an administrator so
-the admin dashboard is reachable. There is no email-and-password sign-in —
-Google is the only method, in demo and against Firebase alike.
+against an empty in-memory backend. **Continue with Google** creates the
+bootstrap superadmin (`jue.george@gmail.com`) so `/admin` is reachable in that
+mode. With credentials, Google sign-in talks to Firebase Auth.
 
 ### Commands
 
@@ -63,7 +60,7 @@ not the emulator it talks to.
 Everything above the service layer is written against the interfaces in
 `src/services/providers/types.ts`. Two implementations satisfy them:
 
-- **`mockProvider`** — seed data, no network, no credentials
+- **`mockProvider`** — empty store, no network, no credentials
 - **`firestoreProvider`** — Firebase Auth and Firestore
 
 `src/config/env.ts` picks one: Firebase as soon as a project config is present,
@@ -211,10 +208,10 @@ firebase deploy --only firestore:rules,firestore:indexes
 
 ### Creating the first admin
 
-There is no bootstrap path in the app, by design — a self-service one would be
-a privilege-escalation hole. Register normally, then in the Firebase console set
-that user's `users/{uid}` document to `role: "admin"` and
-`status: "verified"`. Sign out and back in.
+Signing in with Google as `jue.george@gmail.com` writes `role: "superadmin"` and
+`status: "verified"` on first login. Firestore rules grant that Google email
+admin rights from the ID token, so it cannot be claimed by forging a document.
+Ordinary admins still cannot mint more admins; only a superadmin can.
 
 From there, members verify each other: two existing members approving an
 applicant from `/approvals` is enough. Until the directory has two members, use
@@ -363,9 +360,7 @@ each membership tier reaches exactly the routes it should.
 The map's privacy rules are tested the same way, since a leak there is silent: a
 member who hid their city must not appear at city precision, a class-only
 location must be invisible to other years, and every person must end up either
-on a pin or in the "not shown" count — never neither. A coverage test also
-asserts every seeded alumnus resolves to a real city, so the demo never
-degenerates into pins stacked on country centroids.
+on a pin or in the "not shown" count — never neither.
 
 Date handling is tested too, because `new Date('2026-10-10')` parses as UTC
 midnight and renders as October 9th for anyone west of Greenwich — an event on

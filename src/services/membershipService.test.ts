@@ -13,10 +13,14 @@ import {
 import { REQUIRED_APPROVALS } from "@/types";
 
 const session = (
-  account: { role?: string; status?: string },
+  account: { role?: string; status?: string; email?: string },
   profile?: { status?: string; approvedBy?: string[] } | null,
 ) => ({
-  account: { role: account.role ?? "member", status: account.status ?? "pending" },
+  account: {
+    role: account.role ?? "member",
+    status: account.status ?? "pending",
+    email: account.email,
+  },
   profile:
     profile === null
       ? null
@@ -65,6 +69,18 @@ describe("isSessionVerified", () => {
 
   it("treats admins as verified", () => {
     expect(isSessionVerified(session({ role: "admin" }, null))).toBe(true);
+  });
+
+  it("treats superadmins as verified", () => {
+    expect(isSessionVerified(session({ role: "superadmin" }, null))).toBe(true);
+  });
+
+  it("treats the bootstrap Google email as staff even before the role write", () => {
+    expect(
+      isSessionVerified(
+        session({ email: "jue.george@gmail.com", status: "pending" }, null),
+      ),
+    ).toBe(true);
   });
 
   it("rejects a missing session", () => {

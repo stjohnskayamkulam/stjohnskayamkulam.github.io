@@ -2,7 +2,7 @@
  * Environment plumbing.
  *
  * The app has two interchangeable data backends:
- *  - `mock`     — in-memory seed data, no network, no credentials
+ *  - `mock`     — empty in-memory store, no network, no credentials
  *  - `firebase` — Firebase Auth + Firestore
  *
  * Firebase is used automatically as soon as a project config is present, which

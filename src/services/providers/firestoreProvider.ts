@@ -40,6 +40,7 @@ import {
   type QueryConstraint,
 } from "firebase/firestore";
 import { getFirebase } from "@/services/firebase";
+import { isSuperAdminEmail } from "@/config/admins";
 import { DEFAULT_FIELD_VISIBILITY, REQUIRED_APPROVALS } from "@/types";
 import type {
   AdminStats,
@@ -83,7 +84,12 @@ function toAccount(uid: string, data: DocumentData): UserAccount {
     email: data.email ?? "",
     displayName: data.displayName ?? "",
     photoURL: data.photoURL ?? null,
-    role: data.role === "admin" ? "admin" : "member",
+    role:
+      data.role === "superadmin"
+        ? "superadmin"
+        : data.role === "admin"
+          ? "admin"
+          : "member",
     status: (data.status as MembershipStatus) ?? "pending",
     statusNote: data.statusNote,
     verifiedAt: data.verifiedAt ? iso(data.verifiedAt) : null,
@@ -143,16 +149,18 @@ const stripContact = (p: AlumniProfile): DirectoryEntry => {
 async function loadSession(user: User): Promise<Session> {
   const { db } = getFirebase();
   const accountRef = doc(db, "users", user.uid);
+  const profileRef = doc(db, "profiles", user.uid);
   const accountSnap = await getDoc(accountRef);
+  const bootstrap = isSuperAdminEmail(user.email);
 
   if (!accountSnap.exists()) {
-    // First Google sign-in: create the pending account and a stub profile so
-    // the applicant can finish their details and appear in the approval queue.
     const displayName = user.displayName ?? user.email ?? "New member";
     const nameParts = displayName.trim().split(/\s+/);
     const firstName = nameParts[0] || "New";
     const lastName = nameParts.slice(1).join(" ") || "Member";
     const fullName = `${firstName} ${lastName}`.trim();
+    const role = bootstrap ? "superadmin" : "member";
+    const status = bootstrap ? "verified" : "pending";
     const batch = writeBatch(db);
     batch.set(
       accountRef,
@@ -161,13 +169,14 @@ async function loadSession(user: User): Promise<Session> {
         email: user.email ?? "",
         displayName,
         photoURL: user.photoURL,
-        role: "member",
-        status: "pending",
+        role,
+        status,
         createdAt: serverTimestamp(),
+        ...(bootstrap ? { verifiedAt: serverTimestamp() } : {}),
       }),
     );
     batch.set(
-      doc(db, "profiles", user.uid),
+      profileRef,
       pruneUndefined({
         uid: user.uid,
         firstName,
@@ -183,7 +192,7 @@ async function loadSession(user: User): Promise<Session> {
         helpOffers: [],
         visibility: "alumni",
         fieldVisibility: DEFAULT_FIELD_VISIBILITY,
-        status: "pending",
+        status,
         approvedBy: [],
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -193,7 +202,39 @@ async function loadSession(user: User): Promise<Session> {
     return loadSession(user);
   }
 
-  const profileSnap = await getDoc(doc(db, "profiles", user.uid));
+  if (bootstrap) {
+    const account = toAccount(user.uid, accountSnap.data());
+    const profileSnap = await getDoc(profileRef);
+    const needsPromotion =
+      account.role !== "superadmin" || account.status !== "verified";
+    const profileNeedsPromotion =
+      profileSnap.exists() &&
+      (profileSnap.data()?.status as string) !== "verified";
+    if (needsPromotion || profileNeedsPromotion) {
+      const batch = writeBatch(db);
+      batch.set(
+        accountRef,
+        pruneUndefined({
+          ...accountSnap.data(),
+          role: "superadmin",
+          status: "verified",
+          email: user.email ?? account.email,
+          verifiedAt: serverTimestamp(),
+        }),
+        { merge: true },
+      );
+      if (profileSnap.exists()) {
+        batch.update(profileRef, {
+          status: "verified",
+          updatedAt: serverTimestamp(),
+        });
+      }
+      await batch.commit();
+      return loadSession(user);
+    }
+  }
+
+  const profileSnap = await getDoc(profileRef);
   return {
     account: toAccount(user.uid, accountSnap.data()),
     profile: profileSnap.exists()
@@ -218,7 +259,9 @@ export const firestoreAuthProvider: AuthProvider = {
 
   async signInWithGoogle() {
     const { auth } = getFirebase();
-    const credential = await signInWithPopup(auth, new GoogleAuthProvider());
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    const credential = await signInWithPopup(auth, provider);
     return loadSession(credential.user);
   },
 

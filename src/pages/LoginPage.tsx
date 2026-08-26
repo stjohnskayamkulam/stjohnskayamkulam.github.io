@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { dataBackend } from "@/config/env";
 import { school } from "@/config/school";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
@@ -59,13 +58,6 @@ export function LoginPage() {
             Continue with Google
           </Button>
           {error && <p className="text-sm text-red-600">{error}</p>}
-
-          {dataBackend === "mock" && (
-            <p className="rounded-xl bg-accent-soft/40 p-3 text-xs text-ink-soft">
-              Demo mode: Continue with Google signs you in as an administrator
-              so every screen is reachable.
-            </p>
-          )}
         </div>
 
         <p className="mt-6 text-center text-sm text-ink-soft">

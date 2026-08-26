@@ -7,10 +7,10 @@
  * trip and a rate limit to a page that only ever plots a few hundred people
  * across a few dozen cities.
  *
- * So the mapping is a lookup table. It resolves every city in the seed data and
- * the metros a school's diaspora realistically lands in, then falls back to a
- * country centroid, then gives up honestly — `MapPage` counts the people it
- * could not place rather than dropping them silently.
+ * So the mapping is a lookup table of cities a school's diaspora realistically
+ * lands in, then falls back to a country centroid, then gives up honestly —
+ * `MapPage` counts the people it could not place rather than dropping them
+ * silently.
  *
  * Coordinates are approximate city centres, which is the correct precision for
  * this feature: a pin is "this person is in Toronto", not a home address.

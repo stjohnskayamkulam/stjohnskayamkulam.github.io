@@ -41,8 +41,15 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
+    function isSuperAdmin() {
+      // Must stay in step with SUPERADMIN_EMAIL in src/config/admins.ts.
+      return signedIn() && request.auth.token.email == 'jue.george@gmail.com';
+    }
+
     function isAdmin() {
-      return hasAccount() && account().role == 'admin';
+      return isSuperAdmin()
+             || (hasAccount()
+                 && (account().role == 'admin' || account().role == 'superadmin'));
     }
 
     // Keep in step with `REQUIRED_APPROVALS` in src/types/index.ts.
@@ -62,12 +69,13 @@ service cloud.firestore {
     // an extra document read, so it is evaluated last and only for callers who
     // are not already marked verified.
     function isVerified() {
-      return hasAccount() && (
+      return isSuperAdmin() || (hasAccount() && (
         account().role == 'admin'
+        || account().role == 'superadmin'
         || account().status == 'verified'
         || (account().status == 'pending'
             && approvalsFor(request.auth.uid).size() >= requiredApprovals())
-      );
+      ));
     }
 
     function myGradYear() {
@@ -85,26 +93,36 @@ service cloud.firestore {
       // Only admins may enumerate accounts (the admin dashboard does this).
       allow list: if isAdmin();
 
-      // Self-registration: a new account is always a pending member. Hardcoding
-      // the values rather than comparing to a variable means a crafted request
-      // body cannot smuggle in role='admin' or status='verified'.
+      // Self-registration: a new account is a pending member, unless this is
+      // the bootstrap Google account, which is allowed to arrive as superadmin.
       allow create: if isSelf(uid)
-                    && request.resource.data.role == 'member'
-                    && request.resource.data.status == 'pending'
                     && request.resource.data.uid == uid
-                    && request.resource.data.email == request.auth.token.email;
+                    && request.resource.data.email == request.auth.token.email
+                    && (
+                         (isSuperAdmin()
+                          && request.resource.data.role == 'superadmin'
+                          && request.resource.data.status == 'verified')
+                         || (request.resource.data.role == 'member'
+                             && request.resource.data.status == 'pending')
+                       );
 
       // Self-updates may touch presentation fields only. `role` and `status`
       // are absent from this list, so a member cannot promote themselves even
-      // by replaying an otherwise valid write.
+      // by replaying an otherwise legitimate write.
       allow update: if isSelf(uid)
                     && request.resource.data.diff(resource.data)
                          .affectedKeys()
                          .hasOnly(['displayName', 'photoURL', 'lastLoginAt']);
 
-      // Admins decide membership. They still cannot hand out the admin role
-      // from the app — that is a deliberate console-only operation, so a single
-      // compromised committee account cannot mint more admins.
+      // The bootstrap account may promote its own record if it signed in
+      // before this exception existed.
+      allow update: if isSuperAdmin() && isSelf(uid)
+                    && request.resource.data.role == 'superadmin'
+                    && request.resource.data.status == 'verified';
+
+      // Superadmins may change anyone's membership and role. Ordinary admins
+      // decide membership but cannot mint more admins.
+      allow update: if isSuperAdmin();
       allow update: if isAdmin()
                     && request.resource.data.role == resource.data.role;
 
@@ -128,11 +146,15 @@ service cloud.firestore {
       // to see pending applicants in order to vouch for them.
       allow list: if isAdmin() || (isVerified() && request.query.limit <= 500);
 
-      // Applicants start with no approvals to their name.
+      // Applicants start with no approvals. The bootstrap Google account may
+      // create an already-verified profile so the directory is not empty of staff.
       allow create: if isSelf(uid)
                     && request.resource.data.uid == uid
-                    && request.resource.data.status == 'pending'
-                    && request.resource.data.get('approvedBy', []).size() == 0;
+                    && request.resource.data.get('approvedBy', []).size() == 0
+                    && (
+                         (isSuperAdmin() && request.resource.data.status == 'verified')
+                         || request.resource.data.status == 'pending'
+                       );
 
       // The owner may edit their own profile but not their membership status
       // or the approvals backing it.

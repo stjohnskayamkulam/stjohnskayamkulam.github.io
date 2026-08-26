@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { canonicalCountry, normalizePlace, resolveLocation } from "./geo";
-import { seedProfiles } from "./seed";
 
 describe("normalizePlace", () => {
   it("ignores case, accents, punctuation and padding", () => {
@@ -44,7 +43,7 @@ describe("resolveLocation", () => {
   });
 
   it("resolves a city even when the country is spelled differently", () => {
-    // "Dubai, UAE" and "Abu Dhabi, United Arab Emirates" both appear in the seed.
+    // Country aliases people type: UAE vs United Arab Emirates, USA vs United States.
     expect(resolveLocation("Dubai", "UAE")?.precision).toBe("city");
     expect(resolveLocation("New York", "USA")?.precision).toBe("city");
   });
@@ -69,28 +68,5 @@ describe("resolveLocation", () => {
   it("refuses to guess when nothing is known", () => {
     expect(resolveLocation(null, null)).toBeNull();
     expect(resolveLocation("Atlantis", "Elsewhere")).toBeNull();
-  });
-});
-
-describe("gazetteer coverage", () => {
-  it("resolves every seeded alumnus to a city, not a country centroid", () => {
-    // A country-level fallback in the demo would look like a bug: pins stacked
-    // in the middle of India instead of spread across its cities.
-    const located = seedProfiles.filter((person) => person.city);
-
-    // Guards against this test passing because the seed changed shape.
-    expect(located.length).toBeGreaterThan(20);
-
-    const imprecise = located
-      .map((person) => ({
-        name: person.fullName,
-        place: `${person.city}, ${person.country}`,
-        precision:
-          resolveLocation(person.city, person.country)?.precision ??
-          "unresolved",
-      }))
-      .filter((row) => row.precision !== "city");
-
-    expect(imprecise).toEqual([]);
   });
 });

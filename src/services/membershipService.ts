@@ -9,6 +9,7 @@
  * matching constraints live in `firebase/firestore.rules`.
  */
 import { getDataProvider } from "@/services";
+import { isStaffAccount } from "@/config/admins";
 import { REQUIRED_APPROVALS, type AlumniProfile } from "@/types";
 import { track } from "@/utils/analytics";
 
@@ -59,12 +60,12 @@ export function approvalProgress(profile: {
  */
 export function isSessionVerified(
   session: {
-    account: { role: string; status: string };
+    account: { role: string; status: string; email?: string | null };
     profile: { status: string; approvedBy: string[] } | null;
   } | null,
 ): boolean {
   if (!session) return false;
-  if (session.account.role === "admin") return true;
+  if (isStaffAccount(session.account)) return true;
   if (session.account.status === "rejected") return false;
   if (session.account.status === "verified") return true;
   if (!session.profile) return false;

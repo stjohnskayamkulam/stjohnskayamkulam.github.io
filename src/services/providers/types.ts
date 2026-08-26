@@ -1,7 +1,7 @@
 /**
  * Backend contracts.
  *
- * Two implementations satisfy these: `mockProvider` (seed data, no network) and
+ * Two implementations satisfy these: `mockProvider` (empty in-memory store) and
  * `firestoreProvider` (Firebase). Everything above the service layer is written
  * against these interfaces only, so switching backends is a config change.
  */

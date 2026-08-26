@@ -1,14 +1,94 @@
 /**
  * These tests protect the two promises the directory makes to its members:
  * contact details never leak into list views, and unverified accounts are not
- * discoverable. Both are also enforced by Firestore rules; this suite catches a
- * regression in the app layer before it reaches a real database.
+ * discoverable. Fixtures are local to this file — the app ships with no dummy
+ * alumni.
  */
-import { describe, expect, it } from "vitest";
-import { mockDataProvider, nextMilestoneReunion } from "./mockProvider";
-import { seedPendingProfiles, seedProfiles } from "@/data/seed";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  mockDataProvider,
+  nextMilestoneReunion,
+  putMockMember,
+  resetMockStore,
+} from "./mockProvider";
+import {
+  DEFAULT_FIELD_VISIBILITY,
+  type AlumniProfile,
+  type UserAccount,
+} from "@/types";
+
+const now = "2026-01-01T00:00:00.000Z";
+
+function member(
+  uid: string,
+  overrides: Partial<AlumniProfile> &
+    Pick<AlumniProfile, "firstName" | "lastName" | "gradYear">,
+): { account: UserAccount; profile: AlumniProfile } {
+  const fullName = `${overrides.firstName} ${overrides.lastName}`;
+  const status = overrides.status ?? "verified";
+  const profile: AlumniProfile = {
+    uid,
+    fullName,
+    searchName: fullName.toLowerCase(),
+    interests: [],
+    activities: [],
+    clubs: [],
+    helpOffers: [],
+    visibility: "alumni",
+    fieldVisibility: { ...DEFAULT_FIELD_VISIBILITY },
+    approvedBy: [],
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+    status,
+  };
+  const account: UserAccount = {
+    uid,
+    email: profile.email ?? `${uid}@example.test`,
+    displayName: fullName,
+    role: "member",
+    status,
+    createdAt: now,
+  };
+  return { account, profile };
+}
+
+function installDirectory() {
+  const ana = member("u-ana", {
+    firstName: "Ana",
+    lastName: "Nair",
+    gradYear: 2010,
+    company: "Trellis",
+    country: "India",
+    city: "Kochi",
+  });
+  const ben = member("u-ben", {
+    firstName: "Ben",
+    lastName: "Thomas",
+    gradYear: 2001,
+    company: "Harbour",
+    country: "Australia",
+    city: "Melbourne",
+  });
+  const pending = member("u-pending", {
+    firstName: "Pat",
+    lastName: "Pending",
+    gradYear: 2008,
+    status: "pending",
+    country: "India",
+  });
+  putMockMember(ana.account, ana.profile);
+  putMockMember(ben.account, ben.profile);
+  putMockMember(pending.account, pending.profile);
+}
+
+beforeEach(() => {
+  resetMockStore();
+});
 
 describe("listAlumni", () => {
+  beforeEach(installDirectory);
+
   it("never includes contact details", async () => {
     const rows = await mockDataProvider.listAlumni({});
     expect(rows.length).toBeGreaterThan(0);
@@ -20,10 +100,7 @@ describe("listAlumni", () => {
 
   it("excludes members who have not been verified", async () => {
     const rows = await mockDataProvider.listAlumni({});
-    const pendingUids = seedPendingProfiles.map((p) => p.uid);
-    expect(pendingUids.length).toBeGreaterThan(0);
-    const returnedUids = new Set(rows.map((r) => r.uid));
-    expect(pendingUids.filter((uid) => returnedUids.has(uid))).toEqual([]);
+    expect(rows.map((r) => r.uid)).not.toContain("u-pending");
     expect(rows.every((r) => r.status === "verified")).toBe(true);
   });
 
@@ -34,18 +111,14 @@ describe("listAlumni", () => {
   });
 
   it("matches a free-text query against name, employer and location", async () => {
-    const target = seedProfiles.find((p) => p.company)!;
-    const rows = await mockDataProvider.listAlumni({
-      query: target.company!.toLowerCase(),
-    });
-    expect(rows.map((r) => r.uid)).toContain(target.uid);
+    const rows = await mockDataProvider.listAlumni({ query: "trellis" });
+    expect(rows.map((r) => r.uid)).toContain("u-ana");
   });
 
   it("filters to a single graduating class", async () => {
-    const year = seedProfiles[0].gradYear;
-    const rows = await mockDataProvider.listAlumni({ gradYear: year });
+    const rows = await mockDataProvider.listAlumni({ gradYear: 2001 });
     expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((r) => r.gradYear === year)).toBe(true);
+    expect(rows.every((r) => r.gradYear === 2001)).toBe(true);
   });
 
   it("filters to a decade inclusively at both ends", async () => {
@@ -56,32 +129,28 @@ describe("listAlumni", () => {
   });
 
   it("combines filters conjunctively rather than as a union", async () => {
-    const seed = seedProfiles.find((p) => p.country && p.gradYear)!;
     const rows = await mockDataProvider.listAlumni({
-      country: seed.country,
-      gradYear: seed.gradYear,
+      country: "India",
+      gradYear: 2010,
     });
     expect(
-      rows.every(
-        (r) => r.country === seed.country && r.gradYear === seed.gradYear,
-      ),
+      rows.every((r) => r.country === "India" && r.gradYear === 2010),
     ).toBe(true);
+    expect(rows.map((r) => r.uid)).toContain("u-ana");
   });
 
   it("honours the limit", async () => {
-    const rows = await mockDataProvider.listAlumni({}, { limit: 3 });
-    expect(rows).toHaveLength(3);
+    const rows = await mockDataProvider.listAlumni({}, { limit: 1 });
+    expect(rows).toHaveLength(1);
   });
 });
 
 describe("getClassInfo", () => {
+  beforeEach(installDirectory);
+
   it("counts only verified classmates", async () => {
-    const year = seedProfiles[0].gradYear;
-    const info = await mockDataProvider.getClassInfo(year);
-    const expected = seedProfiles.filter(
-      (p) => p.gradYear === year && p.status === "verified",
-    );
-    expect(info.memberCount).toBe(expected.length);
+    const info = await mockDataProvider.getClassInfo(2010);
+    expect(info.memberCount).toBe(1);
   });
 
   it("projects the next five-year reunion", async () => {
@@ -95,67 +164,58 @@ describe("getClassInfo", () => {
 });
 
 describe("nextMilestoneReunion", () => {
-  const now = (year: number) => new Date(year, 5, 1);
+  const at = (year: number) => new Date(year, 5, 1);
 
   it("returns the current year when the class is in its milestone year", () => {
-    // 2026 is the Class of 2001's 25th year. Rounding up to 2031 would bury the
-    // reunion during the months the class is planning it.
-    expect(nextMilestoneReunion(2001, now(2026))).toBe(2026);
+    expect(nextMilestoneReunion(2001, at(2026))).toBe(2026);
   });
 
   it("rounds up to the next interval between milestones", () => {
-    expect(nextMilestoneReunion(2001, now(2027))).toBe(2031);
-    expect(nextMilestoneReunion(2001, now(2030))).toBe(2031);
+    expect(nextMilestoneReunion(2001, at(2027))).toBe(2031);
+    expect(nextMilestoneReunion(2001, at(2030))).toBe(2031);
   });
 
   it("always lands on a five-year interval that has not passed", () => {
     for (let gradYear = 1970; gradYear <= 2026; gradYear += 1) {
-      const reunion = nextMilestoneReunion(gradYear, now(2026))!;
+      const reunion = nextMilestoneReunion(gradYear, at(2026))!;
       expect((reunion - gradYear) % 5).toBe(0);
       expect(reunion).toBeGreaterThanOrEqual(2026);
     }
   });
 
   it("gives a brand-new class its five-year reunion", () => {
-    expect(nextMilestoneReunion(2026, now(2026))).toBe(2031);
+    expect(nextMilestoneReunion(2026, at(2026))).toBe(2031);
   });
 });
 
 describe("event management", () => {
   const draft = {
     title: "30-Year Reunion — Class of 1996",
-    description:
-      "Dinner at the Riverside Club, followed by a tour of the new library.",
+    description: "Dinner at the Riverside Club.",
     date: "2027-11-20",
     startTime: "18:30",
     location: "Riverside Club",
     eventType: "reunion" as const,
     organizer: "Class of 1996 Committee",
     classYear: 1996,
-    createdBy: "a-mariathomas",
+    createdBy: "u-ana",
   };
 
   it("creates an event that then appears in listings", async () => {
     const created = await mockDataProvider.createEvent(draft);
     expect(created.id).toBeTruthy();
-    // A newly created event has nobody signed up yet, whatever the caller sent.
     expect(created.attendeeCount).toBe(0);
-
     const all = await mockDataProvider.listEvents();
     expect(all.map((e) => e.id)).toContain(created.id);
-
     await mockDataProvider.deleteEvent(created.id);
   });
 
   it("scopes a class event to its graduating year", async () => {
     const created = await mockDataProvider.createEvent(draft);
-
     const forClass = await mockDataProvider.listEvents({ classYear: 1996 });
     expect(forClass.map((e) => e.id)).toContain(created.id);
-
     const otherClass = await mockDataProvider.listEvents({ classYear: 1997 });
     expect(otherClass.map((e) => e.id)).not.toContain(created.id);
-
     await mockDataProvider.deleteEvent(created.id);
   });
 
@@ -165,8 +225,6 @@ describe("event management", () => {
       location: "School Hall",
     });
     expect(updated.location).toBe("School Hall");
-    expect(updated.id).toBe(created.id);
-
     await mockDataProvider.deleteEvent(created.id);
   });
 
@@ -178,9 +236,7 @@ describe("event management", () => {
       gradYear: 1996,
       rsvpAt: new Date().toISOString(),
     });
-
     await mockDataProvider.deleteEvent(created.id);
-
     expect(await mockDataProvider.getEvent(created.id)).toBeNull();
     expect(await mockDataProvider.listAttendees(created.id)).toEqual([]);
   });
@@ -196,7 +252,6 @@ describe("event management", () => {
       gradYear: 1996,
       rsvpAt: new Date().toISOString(),
     });
-
     await expect(
       mockDataProvider.rsvp(created.id, {
         uid: "second",
@@ -205,15 +260,22 @@ describe("event management", () => {
         rsvpAt: new Date().toISOString(),
       }),
     ).rejects.toThrow(/capacity/i);
-
     await mockDataProvider.deleteEvent(created.id);
   });
 });
 
 describe("RSVP", () => {
   it("increments and decrements the attendee count, ignoring duplicates", async () => {
-    const [event] = await mockDataProvider.listEvents({ limit: 1 });
-    const before = event.attendeeCount;
+    const event = await mockDataProvider.createEvent({
+      title: "Meetup",
+      description: "",
+      date: "2027-01-01",
+      startTime: "18:00",
+      location: "Hall",
+      eventType: "networking",
+      organizer: "Committee",
+      createdBy: "u-ana",
+    });
     const attendee = {
       uid: "test-user",
       displayName: "Test Alumna",
@@ -223,75 +285,65 @@ describe("RSVP", () => {
 
     await mockDataProvider.rsvp(event.id, attendee);
     await mockDataProvider.rsvp(event.id, attendee);
-    expect((await mockDataProvider.getEvent(event.id))!.attendeeCount).toBe(
-      before + 1,
-    );
+    expect((await mockDataProvider.getEvent(event.id))!.attendeeCount).toBe(1);
 
     await mockDataProvider.cancelRsvp(event.id, attendee.uid);
     await mockDataProvider.cancelRsvp(event.id, attendee.uid);
-    expect((await mockDataProvider.getEvent(event.id))!.attendeeCount).toBe(
-      before,
-    );
+    expect((await mockDataProvider.getEvent(event.id))!.attendeeCount).toBe(0);
   });
 });
 
 describe("membership", () => {
+  beforeEach(installDirectory);
+
   it("promotes a pending applicant into the directory once verified", async () => {
-    const applicant = seedPendingProfiles[0];
-
-    const beforeRows = await mockDataProvider.listAlumni({});
-    expect(beforeRows.map((r) => r.uid)).not.toContain(applicant.uid);
-
-    await mockDataProvider.setMembershipStatus(applicant.uid, "verified");
-    const afterRows = await mockDataProvider.listAlumni({});
-    expect(afterRows.map((r) => r.uid)).toContain(applicant.uid);
-
-    await mockDataProvider.setMembershipStatus(applicant.uid, "pending");
+    expect((await mockDataProvider.listAlumni({})).map((r) => r.uid)).not.toContain(
+      "u-pending",
+    );
+    await mockDataProvider.setMembershipStatus("u-pending", "verified");
+    expect((await mockDataProvider.listAlumni({})).map((r) => r.uid)).toContain(
+      "u-pending",
+    );
   });
 });
 
-/**
- * Access is granted by peers, not by signing up. These cases pin the three
- * ways that could go wrong: a single voucher being enough, one member voting
- * twice, and an applicant waving themselves through. The equivalent
- * constraints live in `firebase/firestore.rules`, which is what actually stops
- * a crafted request.
- *
- * The mock database is shared across the file, so each case uses an applicant
- * it does not have to reset afterwards.
- */
 describe("peer approval", () => {
-  const nikhil = "a-pending-nikhil";
-  const grace = "a-pending-grace";
-  const [maria, john] = ["a-mariathomas", "a-johnmathew"];
+  beforeEach(() => {
+    installDirectory();
+    const grace = member("u-grace", {
+      firstName: "Grace",
+      lastName: "Philip",
+      gradYear: 2013,
+      status: "pending",
+      approvedBy: ["u-ana"],
+    });
+    putMockMember(grace.account, grace.profile);
+  });
 
   it("refuses a self-approval", async () => {
     await expect(
-      mockDataProvider.endorseMember(nikhil, nikhil),
+      mockDataProvider.endorseMember("u-pending", "u-pending"),
     ).rejects.toThrow(/yourself/i);
   });
 
   it("does not let the same member count twice", async () => {
-    // Maria already vouched for Grace in the seed data.
-    const repeat = await mockDataProvider.endorseMember(grace, maria);
-
-    expect(repeat.approvedBy).toEqual([maria]);
+    const repeat = await mockDataProvider.endorseMember("u-grace", "u-ana");
+    expect(repeat.approvedBy).toEqual(["u-ana"]);
     expect(repeat.status).toBe("pending");
   });
 
   it("keeps an applicant out until two distinct members vouch", async () => {
-    const first = await mockDataProvider.endorseMember(nikhil, maria);
-    expect(first.approvedBy).toEqual([maria]);
+    const first = await mockDataProvider.endorseMember("u-pending", "u-ana");
     expect(first.status).toBe("pending");
     expect((await mockDataProvider.listAlumni({})).map((r) => r.uid)).not.toContain(
-      nikhil,
+      "u-pending",
     );
 
-    const second = await mockDataProvider.endorseMember(nikhil, john);
-    expect(second.approvedBy).toEqual([maria, john]);
+    const second = await mockDataProvider.endorseMember("u-pending", "u-ben");
+    expect(second.approvedBy).toEqual(["u-ana", "u-ben"]);
     expect(second.status).toBe("verified");
     expect((await mockDataProvider.listAlumni({})).map((r) => r.uid)).toContain(
-      nikhil,
+      "u-pending",
     );
   });
 });

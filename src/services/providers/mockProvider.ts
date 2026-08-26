@@ -1,29 +1,23 @@
 /**
- * In-memory backend backed by the seed data.
+ * In-memory backend for CI and clones without Firebase credentials.
  *
- * Used whenever Firebase credentials are absent, which keeps `npm run dev`
- * working on a fresh clone and lets CI build and test without secrets.
- * Mutations live for the lifetime of the tab; only the signed-in user id is
- * persisted, so a refresh does not log you out mid-demo.
+ * Starts empty: there is no demo alumni directory. Google sign-in creates the
+ * bootstrap superadmin so admin screens remain reachable in tests.
  */
-import {
-  seedClassAnnouncements,
-  seedEvents,
-  seedPendingProfiles,
-  seedProfiles,
-  seedUsers,
-} from "@/data/seed";
-import { REQUIRED_APPROVALS } from "@/types";
+import { SUPERADMIN_EMAIL } from "@/config/admins";
+import { DEFAULT_FIELD_VISIBILITY, REQUIRED_APPROVALS } from "@/types";
 import type {
   AdminStats,
   AlumniFilters,
   AlumniProfile,
+  ClassAnnouncement,
   ClassInfo,
   CommunityStats,
   DirectoryEntry,
   EventAttendee,
   MembershipStatus,
   SchoolEvent,
+  UserAccount,
 } from "@/types";
 import { isUpcoming } from "@/utils/date";
 import type {
@@ -40,11 +34,11 @@ import type {
 const clone = <T>(value: T): T => structuredClone(value);
 
 const db = {
-  accounts: clone(seedUsers),
-  profiles: [...clone(seedProfiles), ...clone(seedPendingProfiles)],
-  events: clone(seedEvents),
+  accounts: [] as UserAccount[],
+  profiles: [] as AlumniProfile[],
+  events: [] as SchoolEvent[],
   attendees: new Map<string, EventAttendee[]>(),
-  classAnnouncements: clone(seedClassAnnouncements),
+  classAnnouncements: [] as ClassAnnouncement[],
 };
 
 /** Simulated latency keeps loading states honest during development. */
@@ -104,6 +98,76 @@ function emit(session: Session | null): void {
   for (const listener of listeners) listener(session ? clone(session) : null);
 }
 
+function ensureBootstrapAdmin(): Session {
+  const uid = "u-superadmin";
+  let account = db.accounts.find((a) => a.uid === uid);
+  let profile = db.profiles.find((p) => p.uid === uid);
+  const now = new Date().toISOString();
+  if (!account) {
+    account = {
+      uid,
+      email: SUPERADMIN_EMAIL,
+      displayName: "Superadmin",
+      photoURL: null,
+      role: "superadmin",
+      status: "verified",
+      verifiedAt: now,
+      createdAt: now,
+    };
+    db.accounts.push(account);
+  } else {
+    account.role = "superadmin";
+    account.status = "verified";
+    account.email = SUPERADMIN_EMAIL;
+  }
+  if (!profile) {
+    profile = {
+      uid,
+      firstName: "Super",
+      lastName: "Admin",
+      fullName: "Super Admin",
+      searchName: "super admin",
+      gradYear: new Date().getFullYear(),
+      interests: [],
+      activities: [],
+      clubs: [],
+      helpOffers: [],
+      email: SUPERADMIN_EMAIL,
+      visibility: "alumni",
+      fieldVisibility: { ...DEFAULT_FIELD_VISIBILITY },
+      status: "verified",
+      approvedBy: [],
+      createdAt: now,
+      updatedAt: now,
+    };
+    db.profiles.push(profile);
+  } else {
+    profile.status = "verified";
+  }
+  return clone({ account, profile });
+}
+
+/** Test-only: wipe the in-memory store between cases. */
+export function resetMockStore(): void {
+  db.accounts.length = 0;
+  db.profiles.length = 0;
+  db.events.length = 0;
+  db.attendees.clear();
+  db.classAnnouncements.length = 0;
+  current = null;
+}
+
+/** Test-only: insert a member the way production would persist one. */
+export function putMockMember(
+  account: UserAccount,
+  profile: AlumniProfile,
+): void {
+  db.accounts = db.accounts.filter((a) => a.uid !== account.uid);
+  db.profiles = db.profiles.filter((p) => p.uid !== profile.uid);
+  db.accounts.push(clone(account));
+  db.profiles.push(clone(profile));
+}
+
 export const mockAuthProvider: AuthProvider = {
   subscribe(listener) {
     listeners.add(listener);
@@ -120,9 +184,7 @@ export const mockAuthProvider: AuthProvider = {
   },
 
   async signInWithGoogle() {
-    // Demo mode signs in as an administrator so every screen is reachable.
-    const session = buildSession("a-mariathomas");
-    if (!session) throw new Error("Demo account unavailable");
+    const session = ensureBootstrapAdmin();
     writeStoredUid(session.account.uid);
     emit(session);
     return session;

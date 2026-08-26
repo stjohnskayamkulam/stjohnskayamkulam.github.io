@@ -17,8 +17,9 @@
 export type MembershipStatus = "pending" | "verified" | "rejected";
 
 /** Coarse permission level. Authoritative copy lives in `users/{uid}.role`
- *  and is enforced by Firestore rules, never by the client. */
-export type UserRole = "member" | "admin";
+ *  and is enforced by Firestore rules, never by the client.
+ *  `superadmin` is reserved for the bootstrap Google account. */
+export type UserRole = "member" | "admin" | "superadmin";
 
 /** `users/{uid}` — private account record. Never listed in directory queries. */
 export interface UserAccount {

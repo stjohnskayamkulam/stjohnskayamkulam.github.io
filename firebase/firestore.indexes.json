@@ -1,0 +1,49 @@
+{
+  "//": [
+    "Composite indexes required by the queries in src/services/providers/firestoreProvider.ts.",
+    "Firestore builds single-field indexes automatically, so only multi-field",
+    "queries and equality-plus-sort combinations are listed here.",
+    "Deploy with: firebase deploy --only firestore:indexes"
+  ],
+  "indexes": [
+    {
+      "//": "listAlumni() — the unfiltered directory: verified members, newest class first.",
+      "collectionGroup": "profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "gradYear", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "listAlumni() narrowed by country before in-memory refinement.",
+      "collectionGroup": "profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "country", "order": "ASCENDING" },
+        { "fieldPath": "gradYear", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "listAlumni() narrowed by company.",
+      "collectionGroup": "profiles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "company", "order": "ASCENDING" },
+        { "fieldPath": "gradYear", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "listEvents({ classYear }) — reunions scoped to one graduating class.",
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "classYear", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

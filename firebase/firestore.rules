@@ -1,0 +1,225 @@
+rules_version = '2';
+
+// Authorization boundary for the alumni network.
+//
+// The React app is a static bundle on GitHub Pages: anyone can read the
+// JavaScript, call Firestore directly with their own credentials, and skip
+// every route guard in the client. These rules are therefore the ONLY thing
+// standing between a signed-up stranger and 25 years of personal data about
+// former students. Treat the client as untrusted.
+//
+// Three tiers of caller:
+//   anonymous  — public marketing surface only (events)
+//   pending    — own account/profile only; cannot see other members at all
+//   verified   — the alumni network proper, unlocked by REQUIRED_APPROVALS
+//                peer approvals or by an admin decision
+//   admin      — moderation and membership decisions
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ---------------------------------------------------------------- */
+    /* Caller predicates                                                */
+    /* ---------------------------------------------------------------- */
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Role and membership status live in users/{uid}, which only an admin can
+    // write. Reading it here costs one document lookup per rule evaluation but
+    // keeps a single source of truth; the alternative (custom claims) needs a
+    // privileged backend to mint tokens and goes stale until re-login.
+    function account() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasAccount() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return hasAccount() && account().role == 'admin';
+    }
+
+    // Keep in step with `REQUIRED_APPROVALS` in src/types/index.ts.
+    function requiredApprovals() {
+      return 2;
+    }
+
+    function approvalsFor(uid) {
+      return exists(/databases/$(database)/documents/profiles/$(uid))
+             ? get(/databases/$(database)/documents/profiles/$(uid)).data.get('approvedBy', [])
+             : [];
+    }
+
+    // The gate for seeing other people. Membership is never granted by the act
+    // of signing up: it takes `requiredApprovals()` existing members vouching
+    // for the applicant, or a direct admin decision. The approval lookup costs
+    // an extra document read, so it is evaluated last and only for callers who
+    // are not already marked verified.
+    function isVerified() {
+      return hasAccount() && (
+        account().role == 'admin'
+        || account().status == 'verified'
+        || (account().status == 'pending'
+            && approvalsFor(request.auth.uid).size() >= requiredApprovals())
+      );
+    }
+
+    function myGradYear() {
+      return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data.gradYear;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* users/{uid} — private account record                             */
+    /* ---------------------------------------------------------------- */
+    //
+    // Never listed in directory queries. Holds the authoritative role and
+    // membership status, so self-writes are heavily constrained.
+    match /users/{uid} {
+      allow get: if isSelf(uid) || isAdmin();
+      // Only admins may enumerate accounts (the admin dashboard does this).
+      allow list: if isAdmin();
+
+      // Self-registration: a new account is always a pending member. Hardcoding
+      // the values rather than comparing to a variable means a crafted request
+      // body cannot smuggle in role='admin' or status='verified'.
+      allow create: if isSelf(uid)
+                    && request.resource.data.role == 'member'
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.uid == uid
+                    && request.resource.data.email == request.auth.token.email;
+
+      // Self-updates may touch presentation fields only. `role` and `status`
+      // are absent from this list, so a member cannot promote themselves even
+      // by replaying an otherwise valid write.
+      allow update: if isSelf(uid)
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys()
+                         .hasOnly(['displayName', 'photoURL', 'lastLoginAt']);
+
+      // Admins decide membership. They still cannot hand out the admin role
+      // from the app — that is a deliberate console-only operation, so a single
+      // compromised committee account cannot mint more admins.
+      allow update: if isAdmin()
+                    && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* profiles/{uid} — the directory-visible record                    */
+    /* ---------------------------------------------------------------- */
+    //
+    // Contact details (email, phone) live in this document but are stripped by
+    // the service layer before reaching the directory UI. Rules cannot filter
+    // fields, so field-level privacy is enforced in two places: the client
+    // strips on read, and `fieldVisibility` records intent. Anything that must
+    // be cryptographically hidden from other verified alumni belongs in a
+    // separate document, not here.
+    match /profiles/{uid} {
+      allow get: if isSelf(uid) || isAdmin() || (isVerified() && resource.data.visibility != 'private');
+
+      // Directory queries, and the peer-approval queue: verified members need
+      // to see pending applicants in order to vouch for them.
+      allow list: if isAdmin() || (isVerified() && request.query.limit <= 500);
+
+      // Applicants start with no approvals to their name.
+      allow create: if isSelf(uid)
+                    && request.resource.data.uid == uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.get('approvedBy', []).size() == 0;
+
+      // The owner may edit their own profile but not their membership status
+      // or the approvals backing it.
+      allow update: if isSelf(uid)
+                    && request.resource.data.status == resource.data.status
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.get('approvedBy', []) == resource.data.get('approvedBy', []);
+
+      // Peer verification. A verified member may append themselves — and only
+      // themselves — to `approvedBy`. The same write is the one that flips
+      // `status`, and it may only flip once the list reaches
+      // `requiredApprovals()`, so no single person can let anybody in and
+      // nobody can let themselves in.
+      allow update: if isVerified()
+                    && request.auth.uid != uid
+                    && resource.data.status == 'pending'
+                    && request.resource.data.diff(resource.data)
+                         .affectedKeys().hasOnly(['approvedBy', 'status', 'updatedAt'])
+                    && !(request.auth.uid in resource.data.get('approvedBy', []))
+                    && request.resource.data.approvedBy
+                         == resource.data.get('approvedBy', []).concat([request.auth.uid])
+                    && request.resource.data.status
+                         == (request.resource.data.approvedBy.size() >= requiredApprovals()
+                             ? 'verified' : 'pending');
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* classes/{year}                                                   */
+    /* ---------------------------------------------------------------- */
+
+    match /classes/{year} {
+      allow read: if isVerified();
+      allow write: if isAdmin();
+
+      match /announcements/{announcementId} {
+        allow read: if isVerified();
+        // A class announcement can be posted by an admin, or by a member of
+        // that class about their own class.
+        allow create: if isAdmin()
+                      || (isVerified()
+                          && request.resource.data.postedBy == request.auth.uid
+                          && string(myGradYear()) == year);
+        allow update, delete: if isAdmin()
+                              || (signedIn() && resource.data.postedBy == request.auth.uid);
+      }
+    }
+
+    /* ---------------------------------------------------------------- */
+    /* events/{eventId}                                                 */
+    /* ---------------------------------------------------------------- */
+    //
+    // Deliberately public: upcoming reunions are the strongest reason for a
+    // lapsed alumnus to join, so they must be visible before sign-in. Event
+    // documents must therefore never carry personal data — attendees live in a
+    // subcollection that is not public.
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+
+      // Admins edit events. Any verified member may RSVP, which increments the
+      // denormalised counter; that single field is the only thing they can
+      // touch, and only by ±1, so the count cannot be vandalised.
+      allow update: if isAdmin()
+                    || (isVerified()
+                        && request.resource.data.diff(resource.data)
+                             .affectedKeys().hasOnly(['attendeeCount'])
+                        && request.resource.data.attendeeCount is int
+                        && request.resource.data.attendeeCount >= 0
+                        && (request.resource.data.attendeeCount == resource.data.attendeeCount + 1
+                            || request.resource.data.attendeeCount == resource.data.attendeeCount - 1));
+
+      match /attendees/{uid} {
+        // Who is coming is member-only information, not public.
+        allow read: if isVerified();
+        allow create: if isSelf(uid) && isVerified() && request.resource.data.uid == uid;
+        allow delete: if isSelf(uid) || isAdmin();
+        allow update: if false;
+      }
+    }
+
+    // Anything not matched above is denied. New collections must opt in
+    // explicitly rather than inheriting a permissive default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,90 @@
+@import 'tailwindcss';
+
+/*
+ * School colours arrive as CSS custom properties set at runtime by
+ * `applySchoolTheme()`. The values below are only fallbacks for the first
+ * paint and for tests that render without the provider.
+ */
+:root {
+  --school-primary: #0f4c5c;
+  --school-secondary: #9a3412;
+  --school-accent: #f4d58d;
+}
+
+@theme {
+  --color-brand: var(--school-primary);
+  --color-brand-soft: color-mix(in oklab, var(--school-primary) 12%, white);
+  --color-brand-muted: color-mix(in oklab, var(--school-primary) 55%, white);
+  --color-brand-dark: color-mix(in oklab, var(--school-primary) 78%, black);
+  --color-accent: var(--school-accent);
+  --color-accent-soft: color-mix(in oklab, var(--school-accent) 35%, white);
+  --color-secondary: var(--school-secondary);
+
+  /* Warm paper tones keep the app closer to a yearbook than to a dashboard. */
+  --color-paper: #fbf8f3;
+  --color-paper-deep: #f3ece1;
+  --color-ink: #1f2421;
+  --color-ink-soft: #55605a;
+
+  --font-display: 'Fraunces', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius-card: 1rem;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: 'cv02', 'cv03', 'cv11';
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-[var(--radius-card)] border border-black/5 bg-white shadow-[0_1px_2px_rgba(31,36,33,0.04),0_8px_24px_-16px_rgba(31,36,33,0.25)];
+  }
+
+  /* Faint ruled-paper texture used behind nostalgic sections. */
+  .paper-grain {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(31, 36, 33, 0.045) 1px, transparent 0);
+    background-size: 22px 22px;
+  }
+
+  .section {
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

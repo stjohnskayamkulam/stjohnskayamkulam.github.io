@@ -1,0 +1,117 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Firebase web config is not secret — it ships inside the JavaScript bundle and
+# is safe to expose, because Firestore Security Rules, not obscurity, are the
+# authorization boundary. Repository *variables* are used rather than secrets so
+# the values stay readable and diffable. Never put an admin/service-account key
+# here: those bypass rules entirely.
+env:
+  VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
+  VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+  VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
+  VITE_FIREBASE_STORAGE_BUCKET: ${{ vars.VITE_FIREBASE_STORAGE_BUCKET }}
+  VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+  VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+  VITE_ROUTER_MODE: ${{ vars.VITE_ROUTER_MODE }}
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Verification runs on pull requests too, so a broken build never reaches main.
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Resolve Pages base path
+        id: base
+        run: bash .github/scripts/base-path.sh
+        env:
+          BASE_PATH_OVERRIDE: ${{ vars.VITE_BASE_PATH }}
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE_PATH: ${{ steps.base.outputs.path }}
+
+  deploy:
+    # Pull requests are verified but not published.
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Resolve Pages base path
+        id: base
+        run: bash .github/scripts/base-path.sh
+        env:
+          BASE_PATH_OVERRIDE: ${{ vars.VITE_BASE_PATH }}
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_BASE_PATH: ${{ steps.base.outputs.path }}
+
+      - name: Add SPA fallback for deep links
+        # GitHub Pages has no rewrite rules, so a request for /alumni/abc123 hits
+        # a path with no file and returns 404. Serving index.html *as* the 404
+        # page lets the CDN hand the request to React Router, which then reads
+        # the original URL from the address bar. This is what makes BrowserRouter
+        # viable here; see README for the alternative.
+        run: cp dist/index.html dist/404.html
+
+      - name: Disable Jekyll processing
+        # Without this, Pages strips files and folders beginning with "_".
+        run: touch dist/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

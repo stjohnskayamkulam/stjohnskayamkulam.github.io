@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { EyeOff, Globe2, MapPin, X } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
@@ -59,6 +59,15 @@ export function MapPage() {
 
   const selectedPin = pins.find((pin) => pin.id === selectedPinId) ?? null;
 
+  // Stacked single-column, the names sit below the map and off the screen, so a
+  // tap on a pin would look like it did nothing. Bring them to the reader.
+  const detailsRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    if (!selectedPinId) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+    detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedPinId]);
+
   function setYear(value: string) {
     const next = new URLSearchParams(params);
     if (value) next.set("year", value);
@@ -78,9 +87,9 @@ export function MapPage() {
           Alumni around the world
         </h1>
         <p className="mt-3 text-ink-soft">
-          Every pin is a city someone from the school now calls home. Hover a
-          pin to see who is there, or pick a graduating year to follow one class
-          across the map.
+          Every pin is a city someone from the school now calls home. Tap or
+          hover a pin to see who is there, or pick a graduating year to follow
+          one class across the map.
         </p>
       </header>
 
@@ -158,7 +167,7 @@ export function MapPage() {
               <UnplacedNote unplaced={unplaced} />
             </div>
 
-            <aside>
+            <aside ref={detailsRef}>
               {selectedPin ? (
                 <SelectedLocation
                   pin={selectedPin}

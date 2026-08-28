@@ -16,12 +16,14 @@ function Wrapper({
   hint,
   error,
   htmlFor,
+  required,
   children,
 }: {
   label?: string;
   hint?: string;
   error?: string;
   htmlFor: string;
+  required?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -29,6 +31,12 @@ function Wrapper({
       {label && (
         <label htmlFor={htmlFor} className="block text-sm font-medium text-ink">
           {label}
+          {required && (
+            <span className="text-red-600" aria-hidden>
+              {" "}
+              *
+            </span>
+          )}
         </label>
       )}
       {children}
@@ -50,13 +58,25 @@ export function TextField({
   error,
   className,
   id,
+  required,
   ...rest
 }: TextFieldProps) {
   const generated = useId();
   const fieldId = id ?? generated;
   return (
-    <Wrapper label={label} hint={hint} error={error} htmlFor={fieldId}>
-      <input id={fieldId} className={cn(controlClass, className)} {...rest} />
+    <Wrapper
+      label={label}
+      hint={hint}
+      error={error}
+      htmlFor={fieldId}
+      required={required}
+    >
+      <input
+        id={fieldId}
+        className={cn(controlClass, className)}
+        required={required}
+        {...rest}
+      />
     </Wrapper>
   );
 }
@@ -101,16 +121,24 @@ export function SelectField({
   error,
   className,
   id,
+  required,
   children,
   ...rest
 }: SelectFieldProps) {
   const generated = useId();
   const fieldId = id ?? generated;
   return (
-    <Wrapper label={label} hint={hint} error={error} htmlFor={fieldId}>
+    <Wrapper
+      label={label}
+      hint={hint}
+      error={error}
+      htmlFor={fieldId}
+      required={required}
+    >
       <select
         id={fieldId}
         className={cn(controlClass, "pr-8", className)}
+        required={required}
         {...rest}
       >
         {children}

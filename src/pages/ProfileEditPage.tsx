@@ -16,6 +16,7 @@ import {
 } from "@/config/schoolClasses";
 import { geocodePlace } from "@/data/geocode";
 import { resolveLocation } from "@/data/geo";
+import { school } from "@/config/school";
 import { cn } from "@/utils/cn";
 
 /** Comma-separated inputs are friendlier here than a tag widget. */
@@ -68,23 +69,39 @@ export function ProfileEditPage() {
     setSaved(false);
     setError(null);
     try {
+      const firstName = String(form.get("firstName") ?? "").trim();
+      const lastName = String(form.get("lastName") ?? "").trim();
+      const gradYear = Number(form.get("gradYear"));
+      const attendedFrom = parseSchoolClass(form.get("attendedFrom"));
+      const attendedTo = parseSchoolClass(form.get("attendedTo"));
+      const city = String(form.get("city") ?? "").trim();
+      const country = String(form.get("country") ?? "").trim();
+
+      if (
+        !firstName ||
+        !lastName ||
+        !Number.isInteger(gradYear) ||
+        gradYear < 1900 ||
+        !attendedFrom ||
+        !attendedTo ||
+        !city ||
+        !country
+      ) {
+        throw new Error(
+          "Name, graduation year, classes attended, city and country are required.",
+        );
+      }
+
       await saveProfile({
-        firstName: String(form.get("firstName")),
-        lastName: String(form.get("lastName")),
-        gradYear: Number(form.get("gradYear")),
+        firstName,
+        lastName,
+        gradYear,
         batch: String(form.get("batch") || "") || undefined,
-        yearsAttended: (() => {
-          const from = parseSchoolClass(form.get("attendedFrom"));
-          const to = parseSchoolClass(form.get("attendedTo")) ?? from;
-          return from && to ? orderClasses(from, to) : undefined;
-        })(),
+        yearsAttended: orderClasses(attendedFrom, attendedTo),
         photoURL: String(form.get("photoURL") || "") || null,
-        city: String(form.get("city") || "") || undefined,
-        country: String(form.get("country") || "") || undefined,
-        geo: await resolveProfileGeo(
-          String(form.get("city") || "") || undefined,
-          String(form.get("country") || "") || undefined,
-        ),
+        city,
+        country,
+        geo: await resolveProfileGeo(city, country),
         profession: String(form.get("profession") || "") || undefined,
         industry: String(form.get("industry") || "") || undefined,
         company: String(form.get("company") || "") || undefined,
@@ -147,18 +164,23 @@ export function ProfileEditPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
+        <p className="text-sm text-ink-soft">
+          Fields marked <span className="text-red-600">*</span> are required.
+        </p>
         <Section title="The basics">
           <div className="grid gap-4 sm:grid-cols-2">
             <TextField
               name="firstName"
               label="First name"
               required
+              autoComplete="given-name"
               defaultValue={profile.firstName}
             />
             <TextField
               name="lastName"
               label="Last name"
               required
+              autoComplete="family-name"
               defaultValue={profile.lastName}
             />
             <TextField
@@ -166,6 +188,8 @@ export function ProfileEditPage() {
               label="Graduation year"
               type="number"
               required
+              min={school.foundedYear}
+              max={new Date().getFullYear() + 1}
               defaultValue={profile.gradYear}
             />
             <TextField
@@ -176,6 +200,7 @@ export function ProfileEditPage() {
             <SelectField
               name="attendedFrom"
               label="Attended from"
+              required
               defaultValue={profile.yearsAttended?.from ?? ""}
               hint="LKG, UKG, then classes 1 to 12."
             >
@@ -189,6 +214,7 @@ export function ProfileEditPage() {
             <SelectField
               name="attendedTo"
               label="Attended until"
+              required
               defaultValue={profile.yearsAttended?.to ?? ""}
             >
               <option value="">Select class</option>
@@ -213,11 +239,15 @@ export function ProfileEditPage() {
             <TextField
               name="city"
               label="Current city"
+              required
+              autoComplete="address-level2"
               defaultValue={profile.city ?? ""}
             />
             <TextField
               name="country"
               label="Country"
+              required
+              autoComplete="country-name"
               defaultValue={profile.country ?? ""}
             />
             <TextField

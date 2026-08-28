@@ -48,18 +48,21 @@ export function isProfileComplete(profile: AlumniProfile): boolean {
     profile.firstName &&
     profile.lastName &&
     profile.gradYear &&
+    profile.yearsAttended?.from &&
+    profile.yearsAttended?.to &&
     profile.city &&
-    profile.country &&
-    profile.profession &&
-    profile.bio,
+    profile.country,
   );
 }
 
 export function profileCompletion(profile: AlumniProfile): number {
   const checks = [
-    profile.photoURL,
+    profile.firstName && profile.lastName,
+    profile.gradYear,
+    profile.yearsAttended?.from && profile.yearsAttended?.to,
     profile.city,
     profile.country,
+    profile.photoURL,
     profile.profession,
     profile.industry,
     profile.company,

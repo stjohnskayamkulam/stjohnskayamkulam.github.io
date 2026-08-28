@@ -347,3 +347,57 @@ describe("peer approval", () => {
     );
   });
 });
+
+describe("setUserRole", () => {
+  beforeEach(() => {
+    resetMockStore();
+    installDirectory();
+  });
+
+  it("promotes a member to admin and verifies them if they were pending", async () => {
+    await mockDataProvider.setUserRole("u-pending", "admin");
+
+    const accounts = await mockDataProvider.listAccounts();
+    const promoted = accounts.find((row) => row.uid === "u-pending");
+    expect(promoted?.role).toBe("admin");
+    expect(promoted?.status).toBe("verified");
+    expect((await mockDataProvider.getProfile("u-pending"))?.status).toBe(
+      "verified",
+    );
+  });
+
+  it("revokes admin access without stripping membership", async () => {
+    const ana = member("u-ana", {
+      firstName: "Ana",
+      lastName: "Nair",
+      gradYear: 2010,
+    });
+    putMockMember({ ...ana.account, role: "admin" }, ana.profile);
+
+    await mockDataProvider.setUserRole("u-ana", "member");
+
+    const accounts = await mockDataProvider.listAccounts();
+    expect(accounts.find((row) => row.uid === "u-ana")?.role).toBe("member");
+    expect((await mockDataProvider.getProfile("u-ana"))?.status).toBe(
+      "verified",
+    );
+  });
+
+  it("refuses to change the bootstrap superadmin", async () => {
+    const { SUPERADMIN_EMAIL } = await import("@/config/admins");
+    const staff = member("u-superadmin", {
+      firstName: "Super",
+      lastName: "Admin",
+      gradYear: 2001,
+      email: SUPERADMIN_EMAIL,
+    });
+    putMockMember(
+      { ...staff.account, role: "superadmin", email: SUPERADMIN_EMAIL },
+      staff.profile,
+    );
+
+    await expect(
+      mockDataProvider.setUserRole("u-superadmin", "member"),
+    ).rejects.toThrow(/cannot be changed/i);
+  });
+});

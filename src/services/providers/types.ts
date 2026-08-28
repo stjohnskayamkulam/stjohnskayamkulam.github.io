@@ -97,4 +97,9 @@ export interface DataProvider {
    */
   endorseMember(uid: string, endorserUid: string): Promise<AlumniProfile>;
   listAccounts(): Promise<UserAccount[]>;
+  /**
+   * Appoints or revokes an ordinary admin. Superadmin is bound to the
+   * bootstrap Google email and is not assignable through this write.
+   */
+  setUserRole(uid: string, role: "member" | "admin"): Promise<void>;
 }

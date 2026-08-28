@@ -700,4 +700,37 @@ export const firestoreDataProvider: DataProvider = {
     const snap = await getDocs(query(collection(db, "users"), fsLimit(500)));
     return snap.docs.map((d) => toAccount(d.id, d.data()));
   },
+
+  async setUserRole(uid, role) {
+    if (role !== "member" && role !== "admin") {
+      throw new Error("Only member and admin roles can be assigned");
+    }
+    const { db } = getFirebase();
+    const accountRef = doc(db, "users", uid);
+    const profileRef = doc(db, "profiles", uid);
+    const accountSnap = await getDoc(accountRef);
+    if (!accountSnap.exists()) throw new Error("Account not found");
+    const account = toAccount(uid, accountSnap.data());
+    if (isSuperAdminEmail(account.email)) {
+      throw new Error("The network administrator cannot be changed");
+    }
+
+    const batch = writeBatch(db);
+    const accountPatch: Record<string, unknown> = { role };
+    if (role === "admin") {
+      accountPatch.status = "verified";
+      accountPatch.verifiedAt = serverTimestamp();
+    }
+    batch.update(accountRef, pruneUndefined(accountPatch));
+    if (role === "admin") {
+      const profileSnap = await getDoc(profileRef);
+      if (profileSnap.exists()) {
+        batch.update(profileRef, {
+          status: "verified",
+          updatedAt: serverTimestamp(),
+        });
+      }
+    }
+    await batch.commit();
+  },
 };

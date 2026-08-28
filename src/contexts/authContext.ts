@@ -10,6 +10,8 @@ export interface AuthContextValue {
   /** Signed in *and* approved by two existing members (or an admin). */
   isVerified: boolean;
   isAdmin: boolean;
+  /** The bootstrap Google account, which can appoint other administrators. */
+  isSuperAdmin: boolean;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;

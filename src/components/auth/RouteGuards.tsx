@@ -71,7 +71,7 @@ export function RequireAdmin() {
           <h1 className="mt-4 text-2xl font-semibold">Administrators only</h1>
           <p className="mt-3 text-ink-soft">
             This area is limited to the alumni committee. If you think you
-            should have access, ask an existing administrator to grant it.
+            should have access, ask the network administrator to grant it.
           </p>
           <Link to="/" className={buttonClass("primary", "md", "mt-6")}>
             Back to home

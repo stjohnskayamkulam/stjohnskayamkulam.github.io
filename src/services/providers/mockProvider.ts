@@ -4,7 +4,7 @@
  * Starts empty: there is no demo alumni directory. Google sign-in creates the
  * bootstrap superadmin so admin screens remain reachable in tests.
  */
-import { SUPERADMIN_EMAIL } from "@/config/admins";
+import { isSuperAdminEmail, SUPERADMIN_EMAIL } from "@/config/admins";
 import { DEFAULT_FIELD_VISIBILITY, REQUIRED_APPROVALS } from "@/types";
 import type {
   AdminStats,
@@ -480,6 +480,26 @@ export const mockDataProvider: DataProvider = {
 
   async listAccounts() {
     return settle(db.accounts);
+  },
+
+  async setUserRole(uid, role) {
+    if (role !== "member" && role !== "admin") {
+      throw new Error("Only member and admin roles can be assigned");
+    }
+    const account = db.accounts.find((row) => row.uid === uid);
+    if (!account) throw new Error("Account not found");
+    if (isSuperAdminEmail(account.email)) {
+      throw new Error("The network administrator cannot be changed");
+    }
+    account.role = role;
+    if (role === "admin") {
+      account.status = "verified";
+      account.verifiedAt = account.verifiedAt ?? new Date().toISOString();
+      const profile = db.profiles.find((row) => row.uid === uid);
+      if (profile) profile.status = "verified";
+    }
+    if (current?.account.uid === uid) emit(buildSession(uid));
+    return settle(undefined);
   },
 };
 

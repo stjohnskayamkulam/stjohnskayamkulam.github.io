@@ -41,9 +41,13 @@ service cloud.firestore {
       return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
 
-    function isSuperAdmin() {
+    function bootstrapEmail() {
       // Must stay in step with SUPERADMIN_EMAIL in src/config/admins.ts.
-      return signedIn() && request.auth.token.email == 'jue.george@gmail.com';
+      return 'jue.george@gmail.com';
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && request.auth.token.email == bootstrapEmail();
     }
 
     function isAdmin() {
@@ -120,9 +124,18 @@ service cloud.firestore {
                     && request.resource.data.role == 'superadmin'
                     && request.resource.data.status == 'verified';
 
-      // Superadmins may change anyone's membership and role. Ordinary admins
-      // decide membership but cannot mint more admins.
-      allow update: if isSuperAdmin();
+      // Superadmins may change anyone's membership and appoint ordinary
+      // admins. The bootstrap account cannot be demoted, and nobody else can
+      // be minted as superadmin — that role is bound to the Google email.
+      allow update: if isSuperAdmin()
+                    && request.resource.data.uid == resource.data.uid
+                    && request.resource.data.email == resource.data.email
+                    && (
+                         (resource.data.email == bootstrapEmail()
+                          && request.resource.data.role == 'superadmin')
+                         || (resource.data.email != bootstrapEmail()
+                             && request.resource.data.role in ['member', 'admin'])
+                       );
       allow update: if isAdmin()
                     && request.resource.data.role == resource.data.role;
 

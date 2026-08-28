@@ -37,3 +37,18 @@ export async function rejectMember(uid: string, note?: string): Promise<void> {
 export async function listAccounts(): Promise<UserAccount[]> {
   return (await getDataProvider()).listAccounts();
 }
+
+/**
+ * Appoints or revokes an ordinary admin. Only the bootstrap superadmin can
+ * succeed at this write — Firestore refuses it for everyone else.
+ */
+export async function setUserRole(
+  uid: string,
+  role: "member" | "admin",
+): Promise<void> {
+  await (await getDataProvider()).setUserRole(uid, role);
+  track("admin_action", {
+    action: role === "admin" ? "admin_granted" : "admin_revoked",
+    uid,
+  });
+}

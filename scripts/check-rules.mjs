@@ -255,6 +255,77 @@ const checks = [
       );
     },
   ],
+  [
+    'the bootstrap email may appoint an ordinary admin',
+    async () => {
+      const email = 'jue.george@gmail.com';
+      const uid = 'bootstrap';
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, 'users', uid), {
+          uid,
+          email,
+          displayName: 'Jue',
+          role: 'superadmin',
+          status: 'verified',
+        });
+        await setDoc(doc(db, 'users', MARIA), account(MARIA, 'verified'));
+      });
+      const db = env.authenticatedContext(uid, { email }).firestore();
+      await assertSucceeds(updateDoc(doc(db, 'users', MARIA), { role: 'admin' }));
+    },
+  ],
+  [
+    'an ordinary admin cannot mint another admin',
+    async () => {
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, 'users', MARIA), account(MARIA, 'verified', 'admin'));
+        await setDoc(doc(db, 'users', JOHN), account(JOHN, 'verified'));
+      });
+      await assertFails(updateDoc(doc(as(MARIA), 'users', JOHN), { role: 'admin' }));
+    },
+  ],
+  [
+    'the bootstrap email cannot mint another superadmin',
+    async () => {
+      const email = 'jue.george@gmail.com';
+      const uid = 'bootstrap';
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        await setDoc(doc(db, 'users', uid), {
+          uid,
+          email,
+          displayName: 'Jue',
+          role: 'superadmin',
+          status: 'verified',
+        });
+        await setDoc(doc(db, 'users', MARIA), account(MARIA, 'verified'));
+      });
+      const db = env.authenticatedContext(uid, { email }).firestore();
+      await assertFails(
+        updateDoc(doc(db, 'users', MARIA), { role: 'superadmin' }),
+      );
+    },
+  ],
+  [
+    'the bootstrap account cannot be demoted',
+    async () => {
+      const email = 'jue.george@gmail.com';
+      const uid = 'bootstrap';
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users', uid), {
+          uid,
+          email,
+          displayName: 'Jue',
+          role: 'superadmin',
+          status: 'verified',
+        });
+      });
+      const db = env.authenticatedContext(uid, { email }).firestore();
+      await assertFails(updateDoc(doc(db, 'users', uid), { role: 'member' }));
+    },
+  ],
 ];
 
 let failed = 0;

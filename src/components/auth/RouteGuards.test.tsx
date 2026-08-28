@@ -20,6 +20,7 @@ function contextFor(tier: Tier): AuthContextValue {
       tier === "pending" || tier === "verified" || tier === "admin",
     isVerified: tier === "verified" || tier === "admin",
     isAdmin: tier === "admin",
+    isSuperAdmin: false,
     signInWithGoogle: noop,
     signOut: noop,
     refresh: noop,

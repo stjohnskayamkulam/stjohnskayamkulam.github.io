@@ -82,3 +82,33 @@ export function RequireAdmin() {
   }
   return <Outlet />;
 }
+
+export function RequireSuperAdmin() {
+  const { isAuthenticated, isSuperAdmin, loading } = useAuth();
+  const location = useLocation();
+
+  if (loading) return <LoadingBlock label="Checking your session…" />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+  }
+  if (!isSuperAdmin) {
+    return (
+      <div className="section py-20">
+        <div className="card mx-auto max-w-lg px-8 py-12 text-center">
+          <ShieldCheck className="mx-auto size-8 text-brand/60" aria-hidden />
+          <h1 className="mt-4 text-2xl font-semibold">
+            Network administrator only
+          </h1>
+          <p className="mt-3 text-ink-soft">
+            Editing another alumnus's profile is limited to the network
+            administrator.
+          </p>
+          <Link to="/" className={buttonClass("primary", "md", "mt-6")}>
+            Back to home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  return <Outlet />;
+}

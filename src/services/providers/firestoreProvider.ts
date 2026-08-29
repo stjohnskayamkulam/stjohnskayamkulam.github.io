@@ -393,6 +393,9 @@ export const firestoreDataProvider: DataProvider = {
 
   async updateProfile(uid, patch) {
     const { db } = getFirebase();
+    const existing = await this.getProfile(uid);
+    if (!existing) throw new Error("Profile not found");
+
     const next: Record<string, unknown> = pruneUndefined({
       ...patch,
       updatedAt: serverTimestamp(),
@@ -401,14 +404,32 @@ export const firestoreDataProvider: DataProvider = {
     if ("geo" in patch && patch.geo == null) {
       next.geo = deleteField();
     }
+    let fullName: string | undefined;
     if (patch.firstName || patch.lastName) {
-      const existing = await this.getProfile(uid);
-      const fullName = `${patch.firstName ?? existing?.firstName ?? ""} ${
-        patch.lastName ?? existing?.lastName ?? ""
+      fullName = `${patch.firstName ?? existing.firstName} ${
+        patch.lastName ?? existing.lastName
       }`.trim();
       Object.assign(next, { fullName, searchName: fullName.toLowerCase() });
     }
-    await updateDoc(doc(db, "profiles", uid), next);
+
+    const batch = writeBatch(db);
+    batch.update(doc(db, "profiles", uid), next);
+
+    // Keep the private account record in step with the directory name/photo.
+    const accountPatch: Record<string, unknown> = {};
+    if (fullName) accountPatch.displayName = fullName;
+    if ("photoURL" in patch) {
+      accountPatch.photoURL = patch.photoURL ?? deleteField();
+    }
+    if (Object.keys(accountPatch).length > 0) {
+      const accountRef = doc(db, "users", uid);
+      const accountSnap = await getDoc(accountRef);
+      if (accountSnap.exists()) {
+        batch.update(accountRef, accountPatch);
+      }
+    }
+
+    await batch.commit();
     const updated = await this.getProfile(uid);
     if (!updated) throw new Error("Profile not found after update");
     return updated;

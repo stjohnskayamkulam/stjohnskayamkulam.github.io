@@ -326,6 +326,34 @@ const checks = [
       await assertFails(updateDoc(doc(db, 'users', uid), { role: 'member' }));
     },
   ],
+  [
+    'the bootstrap email may edit another alumnus profile',
+    async () => {
+      const email = 'jue.george@gmail.com';
+      const uid = 'bootstrap';
+      await env.withSecurityRulesDisabled(async (ctx) => {
+        await setDoc(doc(ctx.firestore(), 'users', uid), {
+          uid,
+          email,
+          displayName: 'Jue',
+          role: 'superadmin',
+          status: 'verified',
+        });
+      });
+      const db = env.authenticatedContext(uid, { email }).firestore();
+      await assertSucceeds(
+        updateDoc(doc(db, 'profiles', MARIA), { city: 'Kochi' }),
+      );
+    },
+  ],
+  [
+    "a verified member cannot edit someone else's profile",
+    async () => {
+      await assertFails(
+        updateDoc(doc(as(JOHN), 'profiles', MARIA), { city: 'Kochi' }),
+      );
+    },
+  ],
 ];
 
 let failed = 0;

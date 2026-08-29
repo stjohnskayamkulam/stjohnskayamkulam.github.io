@@ -275,7 +275,10 @@ export const mockDataProvider: DataProvider = {
     db.profiles[index] = next;
 
     const account = db.accounts.find((a) => a.uid === uid);
-    if (account) account.displayName = next.fullName;
+    if (account) {
+      account.displayName = next.fullName;
+      if ("photoURL" in patch) account.photoURL = next.photoURL;
+    }
     if (current?.account.uid === uid) emit(buildSession(uid));
     return settle(next);
   },

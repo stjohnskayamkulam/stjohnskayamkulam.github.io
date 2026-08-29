@@ -24,7 +24,7 @@ import {
 
 export function AlumniProfilePage() {
   const { uid = "" } = useParams();
-  const { session, isAdmin } = useAuth();
+  const { session, isAdmin, isSuperAdmin } = useAuth();
   const profile = useAsync(() => getProfile(uid), [uid]);
 
   if (profile.loading) return <LoadingBlock label="Loading profile…" />;
@@ -125,6 +125,14 @@ export function AlumniProfilePage() {
               {isSelf && (
                 <Link to="/profile" className={buttonClass("primary", "sm")}>
                   Edit my profile
+                </Link>
+              )}
+              {isSuperAdmin && !isSelf && (
+                <Link
+                  to={`/alumni/${person.uid}/edit`}
+                  className={buttonClass("primary", "sm")}
+                >
+                  Edit profile
                 </Link>
               )}
               {canSee("linkedinUrl") && person.linkedinUrl && (

@@ -106,6 +106,9 @@ describe("AdminPage admin appointment", () => {
     await user.click(screen.getByRole("button", { name: "Members" }));
     expect(await screen.findByText("Ana Nair")).toBeInTheDocument();
     expect(
+      screen.queryByRole("link", { name: "Edit profile" }),
+    ).not.toBeInTheDocument();
+    expect(
       screen.queryByRole("button", { name: "Make admin" }),
     ).not.toBeInTheDocument();
   });
@@ -131,6 +134,10 @@ describe("AdminPage admin appointment", () => {
     expect(
       await screen.findByRole("button", { name: "Make admin" }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Edit profile" })).toHaveAttribute(
+      "href",
+      "/alumni/u-ana/edit",
+    );
 
     await user.click(screen.getByRole("button", { name: "Make admin" }));
     expect(setUserRole).toHaveBeenCalledWith("u-ana", "admin");

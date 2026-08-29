@@ -1,8 +1,13 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { CheckCircle2, Eye } from "lucide-react";
+import { useAsync } from "@/hooks/useAsync";
 import { useAuth } from "@/hooks/useAuth";
-import { profileCompletion } from "@/services/alumniService";
+import {
+  getProfile,
+  profileCompletion,
+  updateProfile,
+} from "@/services/alumniService";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { SelectField, TextAreaField, TextField } from "@/components/ui/Field";
@@ -40,27 +45,53 @@ async function resolveProfileGeo(
 }
 
 export function ProfileEditPage() {
+  const { uid: routeUid } = useParams();
   const { session, loading, saveProfile } = useAuth();
+  const editingOther = Boolean(routeUid && routeUid !== session?.account.uid);
+  const loaded = useAsync(
+    () => (routeUid ? getProfile(routeUid) : Promise.resolve(null)),
+    [routeUid],
+  );
+
+  const profile = routeUid ? loaded.data : session?.profile;
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [helpOffers, setHelpOffers] = useState<HelpOffer[]>(
-    session?.profile?.helpOffers ?? [],
-  );
+  const [offerEdits, setOfferEdits] = useState<{
+    uid: string;
+    offers: HelpOffer[];
+  } | null>(null);
+  const helpOffers =
+    profile && offerEdits?.uid === profile.uid
+      ? offerEdits.offers
+      : (profile?.helpOffers ?? []);
 
-  if (loading) return <LoadingBlock />;
-  if (!session?.profile) {
+  if (loading || (routeUid && loaded.loading)) return <LoadingBlock />;
+  if (routeUid && loaded.error) {
     return (
       <div className="section py-20 text-center">
         <p className="text-ink-soft">
-          We could not load your profile. Try signing in again.
+          {loaded.error instanceof Error
+            ? loaded.error.message
+            : "We could not load that profile."}
+        </p>
+      </div>
+    );
+  }
+  if (!profile) {
+    return (
+      <div className="section py-20 text-center">
+        <p className="text-ink-soft">
+          {routeUid
+            ? "This member does not have a profile yet."
+            : "We could not load your profile. Try signing in again."}
         </p>
       </div>
     );
   }
 
-  const profile = session.profile;
   const completion = profileCompletion(profile);
+  const profileUid = profile.uid;
 
   async function handleSubmit(formEvent: React.FormEvent<HTMLFormElement>) {
     formEvent.preventDefault();
@@ -92,7 +123,7 @@ export function ProfileEditPage() {
         );
       }
 
-      await saveProfile({
+      const patch = {
         firstName,
         lastName,
         gradYear,
@@ -113,11 +144,21 @@ export function ProfileEditPage() {
         clubs: splitList(form.get("clubs")),
         helpOffers,
         visibility: form.get("visibility") as "alumni" | "class" | "private",
-      });
+      };
+
+      if (editingOther) {
+        await updateProfile(profileUid, patch);
+      } else {
+        await saveProfile(patch);
+      }
       setSaved(true);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Could not save your profile.",
+        err instanceof Error
+          ? err.message
+          : editingOther
+            ? "Could not save this profile."
+            : "Could not save your profile.",
       );
     } finally {
       setSaving(false);
@@ -130,8 +171,14 @@ export function ProfileEditPage() {
         <div className="flex items-center gap-4">
           <Avatar name={profile.fullName} src={profile.photoURL} size="lg" />
           <div>
-            <h1 className="text-2xl font-semibold sm:text-3xl">My profile</h1>
-            <p className="text-sm text-ink-soft">Class of {profile.gradYear}</p>
+            <h1 className="text-2xl font-semibold sm:text-3xl">
+              {editingOther ? "Edit profile" : "My profile"}
+            </h1>
+            <p className="text-sm text-ink-soft">
+              {editingOther
+                ? `${profile.fullName} · Class of ${profile.gradYear}`
+                : `Class of ${profile.gradYear}`}
+            </p>
           </div>
         </div>
         <Link
@@ -142,6 +189,13 @@ export function ProfileEditPage() {
           View as others see it
         </Link>
       </header>
+
+      {editingOther && (
+        <p className="mb-6 text-sm text-ink-soft">
+          You are editing this record as the network administrator. Membership
+          status is unchanged by this form.
+        </p>
+      )}
 
       {/* Completion nudge — an incomplete directory is a useless directory. */}
       <div className="card mb-8 p-5">
@@ -320,13 +374,15 @@ export function ProfileEditPage() {
                   key={offer}
                   type="button"
                   aria-pressed={active}
-                  onClick={() =>
-                    setHelpOffers((current) =>
-                      active
-                        ? current.filter((o) => o !== offer)
-                        : [...current, offer],
-                    )
-                  }
+                  onClick={() => {
+                    if (!profile) return;
+                    setOfferEdits({
+                      uid: profile.uid,
+                      offers: active
+                        ? helpOffers.filter((o) => o !== offer)
+                        : [...helpOffers, offer],
+                    });
+                  }}
                   className={cn(
                     "rounded-full border px-3.5 py-1.5 text-sm transition",
                     active
@@ -351,17 +407,24 @@ export function ProfileEditPage() {
             <option value="class">Only my graduating class</option>
             <option value="private">Private — administrators only</option>
           </SelectField>
-          <p className="text-sm text-ink-soft">
-            Field-by-field controls, including your email and phone number, live
-            in{" "}
-            <Link
-              to="/settings"
-              className="font-medium text-brand hover:underline"
-            >
-              Settings
-            </Link>
-            .
-          </p>
+          {editingOther ? (
+            <p className="text-sm text-ink-soft">
+              Field-by-field privacy, including email and phone, stays in their
+              own Settings page.
+            </p>
+          ) : (
+            <p className="text-sm text-ink-soft">
+              Field-by-field controls, including your email and phone number, live
+              in{" "}
+              <Link
+                to="/settings"
+                className="font-medium text-brand hover:underline"
+              >
+                Settings
+              </Link>
+              .
+            </p>
+          )}
         </Section>
 
         {error && <p className="text-sm text-red-600">{error}</p>}

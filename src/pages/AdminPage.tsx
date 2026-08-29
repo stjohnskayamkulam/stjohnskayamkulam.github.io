@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SelectField, TextAreaField, TextField } from "@/components/ui/Field";
 import { EmptyState, LoadingBlock } from "@/components/ui/States";
+import { buttonClass } from "@/components/ui/buttonStyles";
 import { ApplicantCard } from "@/components/membership/ApplicantCard";
 import { isSuperAdminEmail, SUPERADMIN_EMAIL } from "@/config/admins";
 import {
@@ -268,6 +269,14 @@ function MembersTab() {
                 {account && isSuperAdmin && (
                   <RoleBadge account={account} />
                 )}
+                {isSuperAdmin && (
+                  <Link
+                    to={`/alumni/${person.uid}/edit`}
+                    className={buttonClass("outline", "sm")}
+                  >
+                    Edit profile
+                  </Link>
+                )}
                 {canAppoint && (
                   <Button
                     size="sm"
@@ -465,6 +474,12 @@ function AdminAccountRow({
         <p className="text-sm text-ink-soft">{account.email}</p>
       </div>
       <RoleBadge account={account} />
+      <Link
+        to={`/alumni/${account.uid}/edit`}
+        className={buttonClass("outline", "sm")}
+      >
+        Edit profile
+      </Link>
       {onAppoint && (
         <Button
           size="sm"

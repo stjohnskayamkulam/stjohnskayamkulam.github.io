@@ -7,9 +7,9 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthContext, type AuthContextValue } from "@/contexts/authContext";
-import { RequireAdmin, RequireAuth, RequireVerified } from "./RouteGuards";
+import { RequireAdmin, RequireAuth, RequireSuperAdmin, RequireVerified } from "./RouteGuards";
 
-type Tier = "loading" | "anonymous" | "pending" | "verified" | "admin";
+type Tier = "loading" | "anonymous" | "pending" | "verified" | "admin" | "superadmin";
 
 function contextFor(tier: Tier): AuthContextValue {
   const noop = async () => {};
@@ -17,10 +17,14 @@ function contextFor(tier: Tier): AuthContextValue {
     session: null,
     loading: tier === "loading",
     isAuthenticated:
-      tier === "pending" || tier === "verified" || tier === "admin",
-    isVerified: tier === "verified" || tier === "admin",
-    isAdmin: tier === "admin",
-    isSuperAdmin: false,
+      tier === "pending" ||
+      tier === "verified" ||
+      tier === "admin" ||
+      tier === "superadmin",
+    isVerified:
+      tier === "verified" || tier === "admin" || tier === "superadmin",
+    isAdmin: tier === "admin" || tier === "superadmin",
+    isSuperAdmin: tier === "superadmin",
     signInWithGoogle: noop,
     signOut: noop,
     refresh: noop,
@@ -98,6 +102,21 @@ describe("RequireAdmin", () => {
 
   it("admits an admin", () => {
     renderGuard(RequireAdmin, "admin");
+    expect(protectedContent()).toBeInTheDocument();
+  });
+});
+
+describe("RequireSuperAdmin", () => {
+  it("blocks an ordinary admin", () => {
+    renderGuard(RequireSuperAdmin, "admin");
+    expect(protectedContent()).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Network administrator only"),
+    ).toBeInTheDocument();
+  });
+
+  it("admits the network administrator", () => {
+    renderGuard(RequireSuperAdmin, "superadmin");
     expect(protectedContent()).toBeInTheDocument();
   });
 });

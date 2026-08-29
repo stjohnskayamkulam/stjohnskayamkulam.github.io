@@ -3,6 +3,7 @@ import { AppLayout } from "@/layouts/AppLayout";
 import {
   RequireAdmin,
   RequireAuth,
+  RequireSuperAdmin,
   RequireVerified,
 } from "@/components/auth/RouteGuards";
 import { HomePage } from "@/pages/HomePage";
@@ -53,6 +54,10 @@ export function App() {
 
         <Route element={<RequireAdmin />}>
           <Route path="admin" element={<AdminPage />} />
+        </Route>
+
+        <Route element={<RequireSuperAdmin />}>
+          <Route path="alumni/:uid/edit" element={<ProfileEditPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

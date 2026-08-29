@@ -61,11 +61,12 @@ export function RequiredProfileModal() {
               id="required-profile-title"
               className="font-display text-2xl font-semibold"
             >
-              A few details first
+              Complete your required details
             </h2>
             <p className="mt-2 text-sm text-ink-soft">
-              Classmates use these to find you. You can add a photo, work and
-              the rest of your story later from your profile.
+              Name, 10th-standard year, classes attended, city and country are
+              needed so classmates can find you. Photo, work and the rest of
+              your story can wait until you open your profile.
             </p>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">

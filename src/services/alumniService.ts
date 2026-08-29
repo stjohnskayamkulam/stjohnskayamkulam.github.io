@@ -56,16 +56,25 @@ export function isProfileComplete(
   profile: AlumniProfile | null | undefined,
 ): boolean {
   if (!profile) return false;
+  const attendedFrom = parseSchoolClass(profile.yearsAttended?.from);
+  const attendedTo = parseSchoolClass(profile.yearsAttended?.to);
   return Boolean(
     profile.firstName?.trim() &&
     profile.lastName?.trim() &&
     Number.isInteger(profile.gradYear) &&
     profile.gradYear >= 1900 &&
-    profile.yearsAttended?.from &&
-    profile.yearsAttended?.to &&
+    attendedFrom &&
+    attendedTo &&
     profile.city?.trim() &&
     profile.country?.trim(),
   );
+}
+
+/** True for any signed-in session — first visit or a returning member. */
+export function sessionNeedsRequiredProfile(
+  session: { profile: AlumniProfile | null } | null | undefined,
+): boolean {
+  return Boolean(session) && !isProfileComplete(session?.profile);
 }
 
 /** Shared by the first-sign-in modal and the full profile form. */

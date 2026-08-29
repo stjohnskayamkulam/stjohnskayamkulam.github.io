@@ -6,14 +6,15 @@ import { Footer } from "@/components/layout/Footer";
 import { PendingBanner } from "@/components/membership/PendingBanner";
 import { RequiredProfileModal } from "@/components/auth/RequiredProfileModal";
 import { useAuth } from "@/hooks/useAuth";
-import { isProfileComplete } from "@/services/alumniService";
+import { sessionNeedsRequiredProfile } from "@/services/alumniService";
 import { track } from "@/utils/analytics";
 
 export function AppLayout() {
   const { pathname } = useLocation();
   const { session, loading } = useAuth();
-  const needsRequired =
-    !loading && Boolean(session) && !isProfileComplete(session?.profile);
+  // First Google sign-in and later visits share this gate. An existing member
+  // who never filled classes, city or the 10th-standard year is blocked too.
+  const needsRequired = !loading && sessionNeedsRequiredProfile(session);
 
   useEffect(() => {
     window.scrollTo(0, 0);

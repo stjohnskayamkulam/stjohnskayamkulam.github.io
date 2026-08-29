@@ -33,7 +33,10 @@ const complete: AlumniProfile = {
 
 const noop = async () => {};
 
-function renderLayout(profile: AlumniProfile | null) {
+function renderLayout(
+  profile: AlumniProfile | null,
+  path = "/",
+) {
   const auth = {
     session: profile
       ? {
@@ -58,10 +61,11 @@ function renderLayout(profile: AlumniProfile | null) {
 
   return render(
     <AuthContext.Provider value={auth}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route element={<AppLayout />}>
             <Route index element={<p>Home page</p>} />
+            <Route path="alumni" element={<p>Directory page</p>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -80,7 +84,7 @@ describe("AppLayout required profile gate", () => {
       gradYear: 0,
     });
     expect(
-      screen.getByRole("dialog", { name: "A few details first" }),
+      screen.getByRole("dialog", { name: "Complete your required details" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Home page")).not.toBeInTheDocument();
   });
@@ -94,5 +98,13 @@ describe("AppLayout required profile gate", () => {
   it("does not show the modal to visitors who have not signed in", () => {
     renderLayout(null);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("also blocks a returning member who never filled classes attended", () => {
+    renderLayout({ ...complete, yearsAttended: undefined }, "/alumni");
+    expect(
+      screen.getByRole("dialog", { name: "Complete your required details" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Directory page")).not.toBeInTheDocument();
   });
 });

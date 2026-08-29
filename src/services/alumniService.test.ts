@@ -4,6 +4,7 @@ import {
   isProfileComplete,
   parseRequiredProfileFields,
   REQUIRED_PROFILE_MESSAGE,
+  sessionNeedsRequiredProfile,
 } from "./alumniService";
 
 const base: AlumniProfile = {
@@ -37,6 +38,27 @@ describe("isProfileComplete", () => {
     expect(isProfileComplete({ ...base, city: "" })).toBe(false);
     expect(isProfileComplete({ ...base, gradYear: 0 })).toBe(false);
     expect(isProfileComplete(null)).toBe(false);
+  });
+
+  it("does not treat leftover calendar years as classes attended", () => {
+    expect(
+      isProfileComplete({
+        ...base,
+        yearsAttended: { from: "1998", to: "2010" },
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("sessionNeedsRequiredProfile", () => {
+  it("asks returning members to fill gaps, not only first-time sign-in", () => {
+    expect(
+      sessionNeedsRequiredProfile({
+        profile: { ...base, yearsAttended: undefined },
+      }),
+    ).toBe(true);
+    expect(sessionNeedsRequiredProfile({ profile: base })).toBe(false);
+    expect(sessionNeedsRequiredProfile(null)).toBe(false);
   });
 });
 

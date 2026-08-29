@@ -14,7 +14,7 @@ export function LoginPage() {
   const from = (location.state as { from?: string } | null)?.from ?? "/alumni";
 
   if (isAuthenticated) {
-    return <Navigate to={isVerified ? from : "/profile"} replace />;
+    return <Navigate to={isVerified ? from : "/"} replace />;
   }
 
   async function handleGoogle() {

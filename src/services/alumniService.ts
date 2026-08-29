@@ -1,5 +1,11 @@
 /** Alumni directory, profiles and class rosters. */
 import { getDataProvider } from "@/services";
+import { school } from "@/config/school";
+import {
+  orderClasses,
+  parseSchoolClass,
+  type ClassesAttended,
+} from "@/config/schoolClasses";
 import type { DirectoryFacets, ListOptions } from "@/services/providers/types";
 import type {
   AlumniFilters,
@@ -42,17 +48,66 @@ export async function updateProfile(
   return updated;
 }
 
+export const REQUIRED_PROFILE_MESSAGE =
+  "Name, graduation year, classes attended, city and country are required.";
+
 /** Enough detail to be findable and worth finding. */
-export function isProfileComplete(profile: AlumniProfile): boolean {
+export function isProfileComplete(
+  profile: AlumniProfile | null | undefined,
+): boolean {
+  if (!profile) return false;
   return Boolean(
-    profile.firstName &&
-    profile.lastName &&
-    profile.gradYear &&
+    profile.firstName?.trim() &&
+    profile.lastName?.trim() &&
+    Number.isInteger(profile.gradYear) &&
+    profile.gradYear >= 1900 &&
     profile.yearsAttended?.from &&
     profile.yearsAttended?.to &&
-    profile.city &&
-    profile.country,
+    profile.city?.trim() &&
+    profile.country?.trim(),
   );
+}
+
+/** Shared by the first-sign-in modal and the full profile form. */
+export function parseRequiredProfileFields(form: FormData): {
+  firstName: string;
+  lastName: string;
+  gradYear: number;
+  yearsAttended: ClassesAttended;
+  city: string;
+  country: string;
+} {
+  const firstName = String(form.get("firstName") ?? "").trim();
+  const lastName = String(form.get("lastName") ?? "").trim();
+  const gradYear = Number(form.get("gradYear"));
+  const attendedFrom = parseSchoolClass(form.get("attendedFrom"));
+  const attendedTo = parseSchoolClass(form.get("attendedTo"));
+  const city = String(form.get("city") ?? "").trim();
+  const country = String(form.get("country") ?? "").trim();
+  const maxYear = new Date().getFullYear() + 1;
+
+  if (
+    !firstName ||
+    !lastName ||
+    !Number.isInteger(gradYear) ||
+    gradYear < school.foundedYear ||
+    gradYear > maxYear ||
+    !attendedFrom ||
+    !attendedTo ||
+    !city ||
+    !country
+  ) {
+    throw new Error(REQUIRED_PROFILE_MESSAGE);
+  }
+
+  return {
+    firstName,
+    lastName,
+    gradYear,
+    yearsAttended: orderClasses(attendedFrom, attendedTo),
+    city,
+    country,
+  };
 }
 
 export function profileCompletion(profile: AlumniProfile): number {

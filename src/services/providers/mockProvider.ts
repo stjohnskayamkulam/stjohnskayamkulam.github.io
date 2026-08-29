@@ -127,7 +127,7 @@ function ensureBootstrapAdmin(): Session {
       lastName: "Admin",
       fullName: "Super Admin",
       searchName: "super admin",
-      gradYear: new Date().getFullYear(),
+      gradYear: 0,
       interests: [],
       activities: [],
       clubs: [],

@@ -5,6 +5,7 @@ import { useAsync } from "@/hooks/useAsync";
 import { useAuth } from "@/hooks/useAuth";
 import {
   getProfile,
+  parseRequiredProfileFields,
   profileCompletion,
   updateProfile,
 } from "@/services/alumniService";
@@ -14,13 +15,8 @@ import { SelectField, TextAreaField, TextField } from "@/components/ui/Field";
 import { buttonClass } from "@/components/ui/buttonStyles";
 import { LoadingBlock } from "@/components/ui/States";
 import { HELP_OFFER_LABELS, type HelpOffer } from "@/types";
-import {
-  parseSchoolClass,
-  SCHOOL_CLASSES,
-  orderClasses,
-} from "@/config/schoolClasses";
-import { geocodePlace } from "@/data/geocode";
-import { resolveLocation } from "@/data/geo";
+import { SCHOOL_CLASSES } from "@/config/schoolClasses";
+import { resolveProfileGeo } from "@/data/profileGeo";
 import { school } from "@/config/school";
 import { cn } from "@/utils/cn";
 
@@ -30,19 +26,6 @@ const splitList = (value: FormDataEntryValue | null): string[] =>
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-
-async function resolveProfileGeo(
-  city: string | undefined,
-  country: string | undefined,
-): Promise<{ lat: number; lon: number } | null> {
-  if (!city) return null;
-  const known = resolveLocation(city, country);
-  if (known?.precision === "city") {
-    return { lat: known.coords[0], lon: known.coords[1] };
-  }
-  const found = await geocodePlace(city, country);
-  return found ? { lat: found[0], lon: found[1] } : null;
-}
 
 export function ProfileEditPage() {
   const { uid: routeUid } = useParams();
@@ -100,39 +83,13 @@ export function ProfileEditPage() {
     setSaved(false);
     setError(null);
     try {
-      const firstName = String(form.get("firstName") ?? "").trim();
-      const lastName = String(form.get("lastName") ?? "").trim();
-      const gradYear = Number(form.get("gradYear"));
-      const attendedFrom = parseSchoolClass(form.get("attendedFrom"));
-      const attendedTo = parseSchoolClass(form.get("attendedTo"));
-      const city = String(form.get("city") ?? "").trim();
-      const country = String(form.get("country") ?? "").trim();
-
-      if (
-        !firstName ||
-        !lastName ||
-        !Number.isInteger(gradYear) ||
-        gradYear < 1900 ||
-        !attendedFrom ||
-        !attendedTo ||
-        !city ||
-        !country
-      ) {
-        throw new Error(
-          "Name, graduation year, classes attended, city and country are required.",
-        );
-      }
+      const required = parseRequiredProfileFields(form);
 
       const patch = {
-        firstName,
-        lastName,
-        gradYear,
+        ...required,
         batch: String(form.get("batch") || "") || undefined,
-        yearsAttended: orderClasses(attendedFrom, attendedTo),
         photoURL: String(form.get("photoURL") || "") || null,
-        city,
-        country,
-        geo: await resolveProfileGeo(city, country),
+        geo: await resolveProfileGeo(required.city, required.country),
         profession: String(form.get("profession") || "") || undefined,
         industry: String(form.get("industry") || "") || undefined,
         company: String(form.get("company") || "") || undefined,
@@ -244,7 +201,7 @@ export function ProfileEditPage() {
               required
               min={school.foundedYear}
               max={new Date().getFullYear() + 1}
-              defaultValue={profile.gradYear}
+              defaultValue={profile.gradYear || ""}
               hint="The year you passed 10th standard, not Class 12."
             />
             <TextField

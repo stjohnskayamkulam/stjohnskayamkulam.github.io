@@ -12,7 +12,7 @@ export function RegisterPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (isAuthenticated) return <Navigate to="/profile" replace />;
+  if (isAuthenticated) return <Navigate to="/" replace />;
 
   async function handleGoogle() {
     setBusy(true);

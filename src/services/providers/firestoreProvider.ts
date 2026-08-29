@@ -163,11 +163,12 @@ async function loadSession(user: User): Promise<Session> {
   const bootstrap = isSuperAdminEmail(user.email);
 
   if (!accountSnap.exists()) {
-    const displayName = user.displayName ?? user.email ?? "New member";
-    const nameParts = displayName.trim().split(/\s+/);
-    const firstName = nameParts[0] || "New";
-    const lastName = nameParts.slice(1).join(" ") || "Member";
+    const googleName = user.displayName?.trim() ?? "";
+    const nameParts = googleName ? googleName.split(/\s+/) : [];
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ");
     const fullName = `${firstName} ${lastName}`.trim();
+    const displayName = googleName || user.email || "";
     const role = bootstrap ? "superadmin" : "member";
     const status = bootstrap ? "verified" : "pending";
     const batch = writeBatch(db);
@@ -192,7 +193,7 @@ async function loadSession(user: User): Promise<Session> {
         lastName,
         fullName,
         searchName: fullName.toLowerCase(),
-        gradYear: new Date().getFullYear(),
+        gradYear: 0,
         photoURL: user.photoURL,
         email: user.email ?? "",
         interests: [],

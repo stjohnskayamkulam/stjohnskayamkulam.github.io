@@ -245,6 +245,7 @@ export function ProfileEditPage() {
               min={school.foundedYear}
               max={new Date().getFullYear() + 1}
               defaultValue={profile.gradYear}
+              hint="The year you passed 10th standard, not Class 12."
             />
             <TextField
               name="batch"

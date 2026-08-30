@@ -92,6 +92,15 @@ describe("ProfileEditPage as superadmin", () => {
     expect(
       screen.getByText(/editing this record as the network administrator/i),
     ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/10th grade graduation year/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /regardless of when you joined or left St\. John's School/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(/class \/ batch/i)).not.toBeInTheDocument();
 
     const city = screen.getByLabelText(/current city/i);
     await user.clear(city);

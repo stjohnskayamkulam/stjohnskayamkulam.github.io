@@ -87,15 +87,14 @@ export function RequiredProfileModal() {
               />
               <TextField
                 name="gradYear"
-                label="Graduation year"
+                label="10th Grade Graduation Year"
                 type="number"
                 required
                 min={school.foundedYear}
                 max={new Date().getFullYear() + 1}
                 defaultValue={profile.gradYear || ""}
-                hint="The year you passed 10th standard, not Class 12."
+                hint={`Please enter the year you graduated from 10th standard, regardless of when you joined or left ${school.schoolName}. Do not enter your Class 12 graduation year.`}
               />
-              <div className="hidden sm:block" aria-hidden />
               <SelectField
                 name="attendedFrom"
                 label="Attended from"

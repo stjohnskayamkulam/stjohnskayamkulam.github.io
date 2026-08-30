@@ -87,7 +87,6 @@ export function ProfileEditPage() {
 
       const patch = {
         ...required,
-        batch: String(form.get("batch") || "") || undefined,
         photoURL: String(form.get("photoURL") || "") || null,
         geo: await resolveProfileGeo(required.city, required.country),
         profession: String(form.get("profession") || "") || undefined,
@@ -196,18 +195,13 @@ export function ProfileEditPage() {
             />
             <TextField
               name="gradYear"
-              label="Graduation year"
+              label="10th Grade Graduation Year"
               type="number"
               required
               min={school.foundedYear}
               max={new Date().getFullYear() + 1}
               defaultValue={profile.gradYear || ""}
-              hint="The year you passed 10th standard, not Class 12."
-            />
-            <TextField
-              name="batch"
-              label="Class / batch"
-              defaultValue={profile.batch ?? ""}
+              hint={`Please enter the year you graduated from 10th standard, regardless of when you joined or left ${school.schoolName}. Do not enter your Class 12 graduation year.`}
             />
             <SelectField
               name="attendedFrom"

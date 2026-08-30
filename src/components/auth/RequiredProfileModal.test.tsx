@@ -59,7 +59,10 @@ describe("RequiredProfileModal", () => {
     const { saveProfile } = renderModal();
 
     await user.type(screen.getByLabelText(/last name/i), "George");
-    await user.type(screen.getByLabelText(/graduation year/i), "2001");
+    await user.type(
+      screen.getByLabelText(/10th grade graduation year/i),
+      "2001",
+    );
     await user.selectOptions(screen.getByLabelText(/attended from/i), "LKG");
     await user.selectOptions(screen.getByLabelText(/attended until/i), "10");
     await user.type(screen.getByLabelText(/current city/i), "Kayamkulam");

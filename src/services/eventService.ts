@@ -45,7 +45,9 @@ export async function updateEvent(
   id: string,
   patch: Partial<SchoolEvent>,
 ): Promise<SchoolEvent> {
-  return (await getDataProvider()).updateEvent(id, patch);
+  const event = await (await getDataProvider()).updateEvent(id, patch);
+  track("admin_action", { action: "event_updated", eventId: id });
+  return event;
 }
 
 export async function deleteEvent(id: string): Promise<void> {

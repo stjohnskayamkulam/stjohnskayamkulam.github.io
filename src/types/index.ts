@@ -226,11 +226,11 @@ export interface SchoolEvent {
   /** ISO date (YYYY-MM-DD). */
   date: string;
   startTime: string;
-  endTime?: string;
+  endTime?: string | null;
   location: string;
   eventType: EventType;
   organizer: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   capacity?: number | null;
   /** Set when the event belongs to a single graduating class. */
   classYear?: number | null;

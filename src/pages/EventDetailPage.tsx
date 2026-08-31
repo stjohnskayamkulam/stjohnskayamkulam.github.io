@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Clock,
   MapPin,
+  Pencil,
   UserCheck,
   Users,
 } from "lucide-react";
@@ -15,7 +16,10 @@ import {
   getEvent,
   listAttendees,
   rsvp,
+  updateEvent,
 } from "@/services/eventService";
+import { EventEditorForm } from "@/components/events/EventEditorForm";
+import type { EventWriteFields } from "@/components/events/eventForm";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -26,13 +30,15 @@ import { formatEventDate, formatTime, isUpcoming } from "@/utils/date";
 
 export function EventDetailPage() {
   const { id = "" } = useParams();
-  const { session, isVerified } = useAuth();
+  const { session, isVerified, isAdmin } = useAuth();
 
   const event = useAsync(() => getEvent(id), [id]);
   const attendees = useAsync(() => listAttendees(id), [id]);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const uid = session?.account.uid;
   // Derived from the attendee list rather than mirrored into state, so a reload
@@ -91,6 +97,22 @@ export function EventDetailPage() {
     }
   }
 
+  async function handleSave(fields: EventWriteFields) {
+    setSaving(true);
+    setError(null);
+    try {
+      await updateEvent(id, fields);
+      setEditing(false);
+      event.reload();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not save this event.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="pb-16">
       {data.imageUrl && (
@@ -118,6 +140,19 @@ export function EventDetailPage() {
             All events
           </Link>
 
+          {isAdmin && editing && (
+            <EventEditorForm
+              event={data}
+              saving={saving}
+              error={error}
+              onSubmit={handleSave}
+              onCancel={() => {
+                setEditing(false);
+                setError(null);
+              }}
+            />
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="brand">{EVENT_TYPE_LABELS[data.eventType]}</Badge>
             {data.classYear && (
@@ -131,6 +166,21 @@ export function EventDetailPage() {
           <h1 className="mt-4 font-display text-3xl font-semibold sm:text-4xl">
             {data.title}
           </h1>
+          {isAdmin && !editing && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                setError(null);
+                setEditing(true);
+              }}
+            >
+              <Pencil className="size-4" aria-hidden />
+              Edit event
+            </Button>
+          )}
 
           <p className="mt-6 leading-relaxed whitespace-pre-line text-ink/85">
             {data.description}

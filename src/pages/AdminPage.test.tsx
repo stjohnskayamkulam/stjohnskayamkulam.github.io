@@ -6,6 +6,7 @@ import { AuthContext, type AuthContextValue } from "@/contexts/authContext";
 import { AdminPage } from "./AdminPage";
 import { SUPERADMIN_EMAIL } from "@/config/admins";
 import { setUserRole } from "@/services/adminService";
+import { listEvents, updateEvent } from "@/services/eventService";
 
 vi.mock("@/services/adminService", () => ({
   getAdminStats: vi.fn(async () => ({
@@ -46,6 +47,7 @@ vi.mock("@/services/membershipService", () => ({
 vi.mock("@/services/eventService", () => ({
   listEvents: vi.fn(async () => []),
   createEvent: vi.fn(),
+  updateEvent: vi.fn(),
   deleteEvent: vi.fn(),
 }));
 
@@ -95,6 +97,7 @@ function renderAdmin(isSuperAdmin: boolean) {
 describe("AdminPage admin appointment", () => {
   beforeEach(() => {
     vi.mocked(setUserRole).mockClear();
+    vi.mocked(listEvents).mockResolvedValue([]);
   });
   it("hides admin-appointment tools from an ordinary admin", async () => {
     const user = userEvent.setup();
@@ -141,5 +144,64 @@ describe("AdminPage admin appointment", () => {
 
     await user.click(screen.getByRole("button", { name: "Make admin" }));
     expect(setUserRole).toHaveBeenCalledWith("u-ana", "admin");
+  });
+});
+
+describe("AdminPage events", () => {
+  beforeEach(() => {
+    vi.mocked(updateEvent).mockClear();
+  });
+
+  it("lets an admin save changes to an existing event", async () => {
+    vi.mocked(listEvents).mockResolvedValue([
+      {
+        id: "e-reunion",
+        title: "25-Year Reunion",
+        description: "Come back to Peringala.",
+        date: "2026-10-10",
+        startTime: "18:00",
+        location: "School ground",
+        eventType: "reunion",
+        organizer: "Alumni committee",
+        attendeeCount: 3,
+        createdBy: "u-admin",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    vi.mocked(updateEvent).mockResolvedValue({
+      id: "e-reunion",
+      title: "Silver jubilee",
+      description: "Come back to Peringala.",
+      date: "2026-10-10",
+      startTime: "18:00",
+      location: "School ground",
+      eventType: "reunion",
+      organizer: "Alumni committee",
+      attendeeCount: 3,
+      createdBy: "u-admin",
+      createdAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const user = userEvent.setup();
+    renderAdmin(false);
+    await user.click(screen.getByRole("button", { name: "Events" }));
+
+    expect(await screen.findByText("25-Year Reunion")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Edit 25-Year Reunion" }),
+    );
+
+    const title = screen.getByLabelText(/^title/i);
+    await user.clear(title);
+    await user.type(title, "Silver jubilee");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateEvent).toHaveBeenCalledWith(
+      "e-reunion",
+      expect.objectContaining({
+        title: "Silver jubilee",
+        location: "School ground",
+      }),
+    );
   });
 });

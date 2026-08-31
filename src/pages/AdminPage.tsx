@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarPlus, ShieldCheck, Trash2, UserCheck } from "lucide-react";
+import { CalendarPlus, Pencil, ShieldCheck, Trash2, UserCheck } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -14,22 +14,19 @@ import {
   approveApplicant,
   listPendingApplicants,
 } from "@/services/membershipService";
-import { createEvent, deleteEvent, listEvents } from "@/services/eventService";
+import { createEvent, deleteEvent, listEvents, updateEvent } from "@/services/eventService";
 import { searchAlumni } from "@/services/alumniService";
+import { EventEditorForm } from "@/components/events/EventEditorForm";
+import type { EventWriteFields } from "@/components/events/eventForm";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { SelectField, TextAreaField, TextField } from "@/components/ui/Field";
+import { TextField } from "@/components/ui/Field";
 import { EmptyState, LoadingBlock } from "@/components/ui/States";
 import { buttonClass } from "@/components/ui/buttonStyles";
 import { ApplicantCard } from "@/components/membership/ApplicantCard";
 import { isSuperAdminEmail, SUPERADMIN_EMAIL } from "@/config/admins";
-import {
-  EVENT_TYPE_LABELS,
-  REQUIRED_APPROVALS,
-  type EventType,
-  type UserAccount,
-} from "@/types";
+import { REQUIRED_APPROVALS, type UserAccount } from "@/types";
 import { formatDate } from "@/utils/date";
 import { cn } from "@/utils/cn";
 
@@ -510,31 +507,34 @@ function AdminAccountRow({
 function EventsTab({ onChange }: { onChange: () => void }) {
   const { session } = useAuth();
   const events = useAsync(() => listEvents(), []);
-  const [creating, setCreating] = useState(false);
+  const [draft, setDraft] = useState<"new" | string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleCreate(formEvent: React.FormEvent<HTMLFormElement>) {
-    formEvent.preventDefault();
-    const form = new FormData(formEvent.currentTarget);
+  const editing =
+    draft && draft !== "new"
+      ? (events.data?.find((event) => event.id === draft) ?? null)
+      : null;
+
+  async function handleSave(fields: EventWriteFields) {
     setSaving(true);
+    setError(null);
     try {
-      await createEvent({
-        title: String(form.get("title")),
-        description: String(form.get("description")),
-        date: String(form.get("date")),
-        startTime: String(form.get("startTime")),
-        endTime: String(form.get("endTime") || "") || undefined,
-        location: String(form.get("location")),
-        eventType: form.get("eventType") as EventType,
-        organizer: String(form.get("organizer")),
-        imageUrl: String(form.get("imageUrl") || "") || undefined,
-        capacity: form.get("capacity") ? Number(form.get("capacity")) : null,
-        classYear: form.get("classYear") ? Number(form.get("classYear")) : null,
-        createdBy: session?.account.uid ?? "",
-      });
-      setCreating(false);
+      if (draft && draft !== "new") {
+        await updateEvent(draft, fields);
+      } else {
+        await createEvent({
+          ...fields,
+          createdBy: session?.account.uid ?? "",
+        });
+      }
+      setDraft(null);
       events.reload();
       onChange();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not save this event.",
+      );
     } finally {
       setSaving(false);
     }
@@ -542,60 +542,40 @@ function EventsTab({ onChange }: { onChange: () => void }) {
 
   return (
     <>
-      <Button onClick={() => setCreating((open) => !open)} className="mb-6">
+      <Button
+        onClick={() => {
+          setError(null);
+          setDraft((open) => (open === "new" ? null : "new"));
+        }}
+        className="mb-6"
+      >
         <CalendarPlus className="size-4" aria-hidden />
         New event
       </Button>
 
-      {creating && (
-        <form onSubmit={handleCreate} className="card mb-8 space-y-4 p-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <TextField name="title" label="Title" required />
-            <SelectField name="eventType" label="Type" defaultValue="reunion">
-              {(Object.keys(EVENT_TYPE_LABELS) as EventType[]).map((value) => (
-                <option key={value} value={value}>
-                  {EVENT_TYPE_LABELS[value]}
-                </option>
-              ))}
-            </SelectField>
-            <TextField name="date" label="Date" type="date" required />
-            <TextField
-              name="startTime"
-              label="Start time"
-              type="time"
-              required
-            />
-            <TextField name="endTime" label="End time" type="time" />
-            <TextField name="location" label="Location" required />
-            <TextField name="organizer" label="Organiser" required />
-            <TextField
-              name="capacity"
-              label="Capacity"
-              type="number"
-              placeholder="Unlimited"
-            />
-            <TextField
-              name="classYear"
-              label="Class year"
-              type="number"
-              placeholder="All alumni"
-            />
-            <TextField name="imageUrl" label="Image URL" type="url" />
-          </div>
-          <TextAreaField name="description" label="Description" required />
-          <div className="flex gap-3">
-            <Button type="submit" loading={saving}>
-              Create event
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setCreating(false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        </form>
+      {draft === "new" && (
+        <EventEditorForm
+          saving={saving}
+          error={error}
+          onSubmit={handleSave}
+          onCancel={() => {
+            setDraft(null);
+            setError(null);
+          }}
+        />
+      )}
+      {editing && (
+        <EventEditorForm
+          key={editing.id}
+          event={editing}
+          saving={saving}
+          error={error}
+          onSubmit={handleSave}
+          onCancel={() => {
+            setDraft(null);
+            setError(null);
+          }}
+        />
       )}
 
       {events.loading ? (
@@ -618,8 +598,21 @@ function EventsTab({ onChange }: { onChange: () => void }) {
               </Link>
               <Badge>{event.attendeeCount} attending</Badge>
               <button
+                type="button"
+                onClick={() => {
+                  setError(null);
+                  setDraft(event.id);
+                }}
+                className="rounded-full p-2 text-ink-soft hover:bg-black/5 hover:text-ink"
+                aria-label={`Edit ${event.title}`}
+              >
+                <Pencil className="size-4" />
+              </button>
+              <button
+                type="button"
                 onClick={async () => {
                   await deleteEvent(event.id);
+                  if (draft === event.id) setDraft(null);
                   events.reload();
                   onChange();
                 }}

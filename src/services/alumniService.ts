@@ -16,6 +16,7 @@ import type {
   DirectoryEntry,
 } from "@/types";
 import { track } from "@/utils/analytics";
+import { isRecordedGradYear } from "@/utils/profile";
 
 export async function searchAlumni(
   filters: AlumniFilters,
@@ -61,8 +62,7 @@ export function isProfileComplete(
   return Boolean(
     profile.firstName?.trim() &&
     profile.lastName?.trim() &&
-    Number.isInteger(profile.gradYear) &&
-    profile.gradYear >= 1900 &&
+    isRecordedGradYear(profile.gradYear) &&
     attendedFrom &&
     attendedTo &&
     profile.city?.trim() &&
@@ -122,7 +122,7 @@ export function parseRequiredProfileFields(form: FormData): {
 export function profileCompletion(profile: AlumniProfile): number {
   const checks = [
     profile.firstName && profile.lastName,
-    profile.gradYear,
+    isRecordedGradYear(profile.gradYear),
     profile.yearsAttended?.from && profile.yearsAttended?.to,
     profile.city,
     profile.country,

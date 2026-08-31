@@ -107,4 +107,12 @@ describe("AppLayout required profile gate", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Directory page")).not.toBeInTheDocument();
   });
+
+  it("blocks a member tagged with graduation year 0", () => {
+    renderLayout({ ...complete, gradYear: 0 });
+    expect(
+      screen.getByRole("dialog", { name: "Complete your required details" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Home page")).not.toBeInTheDocument();
+  });
 });

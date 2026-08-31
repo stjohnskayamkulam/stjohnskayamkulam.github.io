@@ -2,10 +2,12 @@ import { Link } from "react-router-dom";
 import { Briefcase, MapPin } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import type { DirectoryEntry } from "@/types";
+import { classOfLabel } from "@/utils/profile";
 
 export function AlumniCard({ person }: { person: DirectoryEntry }) {
   const location = [person.city, person.country].filter(Boolean).join(", ");
   const work = [person.profession, person.company].filter(Boolean).join(" · ");
+  const yearLabel = classOfLabel(person.gradYear);
 
   return (
     <Link
@@ -18,7 +20,9 @@ export function AlumniCard({ person }: { person: DirectoryEntry }) {
           <h3 className="truncate font-semibold text-ink group-hover:text-brand">
             {person.fullName}
           </h3>
-          <p className="text-sm text-ink-soft">Class of {person.gradYear}</p>
+          {yearLabel && (
+            <p className="text-sm text-ink-soft">{yearLabel}</p>
+          )}
         </div>
       </div>
 

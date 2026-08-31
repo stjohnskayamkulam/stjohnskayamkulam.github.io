@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Avatar } from "@/components/ui/Avatar";
 import { buttonClass } from "@/components/ui/buttonStyles";
 import { cn } from "@/utils/cn";
+import { classOfLabel } from "@/utils/profile";
 
 export function Navbar() {
   const { isAuthenticated, isAdmin, isVerified, session, signOut } = useAuth();
@@ -115,9 +116,9 @@ export function Navbar() {
                       <p className="truncate text-sm font-medium text-ink">
                         {session.account.displayName}
                       </p>
-                      {session.profile && (
+                      {classOfLabel(session.profile?.gradYear) && (
                         <p className="text-xs text-ink-soft">
-                          Class of {session.profile.gradYear}
+                          {classOfLabel(session.profile?.gradYear)}
                         </p>
                       )}
                     </div>

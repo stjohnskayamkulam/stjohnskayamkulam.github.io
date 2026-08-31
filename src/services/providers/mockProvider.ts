@@ -20,6 +20,7 @@ import type {
   UserAccount,
 } from "@/types";
 import { isUpcoming } from "@/utils/date";
+import { isRecordedGradYear } from "@/utils/profile";
 import type {
   AuthProvider,
   DataProvider,
@@ -286,9 +287,9 @@ export const mockDataProvider: DataProvider = {
   async getDirectoryFacets() {
     const rows = verified();
     const facets: DirectoryFacets = {
-      gradYears: [...new Set(rows.map((p) => p.gradYear))].sort(
-        (a, b) => b - a,
-      ),
+      gradYears: [...new Set(rows.map((p) => p.gradYear))]
+        .filter(isRecordedGradYear)
+        .sort((a, b) => b - a),
       cities: uniqueSorted(rows.map((p) => p.city)),
       countries: uniqueSorted(rows.map((p) => p.country)),
       professions: uniqueSorted(rows.map((p) => p.profession)),
@@ -329,8 +330,10 @@ export const mockDataProvider: DataProvider = {
 
   async listClassYears() {
     const counts = new Map<number, number>();
-    for (const p of verified())
+    for (const p of verified()) {
+      if (!isRecordedGradYear(p.gradYear)) continue;
       counts.set(p.gradYear, (counts.get(p.gradYear) ?? 0) + 1);
+    }
     const rows = [...counts.entries()]
       .map(([year, memberCount]) => ({ year, memberCount }))
       .sort((a, b) => b.year - a.year);
@@ -412,7 +415,8 @@ export const mockDataProvider: DataProvider = {
     const rows = verified();
     const stats: CommunityStats = {
       alumniCount: rows.length,
-      classCount: new Set(rows.map((p) => p.gradYear)).size,
+      classCount: new Set(rows.map((p) => p.gradYear).filter(isRecordedGradYear))
+        .size,
       countryCount: new Set(rows.map((p) => p.country).filter(Boolean)).size,
       upcomingEventCount: db.events.filter((e) => isUpcoming(e.date)).length,
     };
@@ -426,7 +430,11 @@ export const mockDataProvider: DataProvider = {
       pendingApprovals: db.profiles.filter((p) => p.status === "pending")
         .length,
       upcomingEvents: db.events.filter((e) => isUpcoming(e.date)).length,
-      activeClasses: new Set(verified().map((p) => p.gradYear)).size,
+      activeClasses: new Set(
+        verified()
+          .map((p) => p.gradYear)
+          .filter(isRecordedGradYear),
+      ).size,
       newMembersThisMonth: db.accounts.filter(
         (a) => Date.parse(a.createdAt) >= monthAgo,
       ).length,

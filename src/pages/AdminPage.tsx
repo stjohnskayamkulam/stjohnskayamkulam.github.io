@@ -29,6 +29,7 @@ import { isSuperAdminEmail, SUPERADMIN_EMAIL } from "@/config/admins";
 import { REQUIRED_APPROVALS, type UserAccount } from "@/types";
 import { formatDate } from "@/utils/date";
 import { cn } from "@/utils/cn";
+import { classOfLabel } from "@/utils/profile";
 
 type Tab = "approvals" | "members" | "events" | "admins";
 
@@ -259,9 +260,11 @@ function MembersTab() {
                   className="min-w-40 flex-1 hover:text-brand"
                 >
                   <span className="font-medium">{person.fullName}</span>
-                  <span className="ml-2 text-sm text-ink-soft">
-                    Class of {person.gradYear}
-                  </span>
+                  {classOfLabel(person.gradYear) && (
+                    <span className="ml-2 text-sm text-ink-soft">
+                      {classOfLabel(person.gradYear)}
+                    </span>
+                  )}
                 </Link>
                 {account && isSuperAdmin && (
                   <RoleBadge account={account} />

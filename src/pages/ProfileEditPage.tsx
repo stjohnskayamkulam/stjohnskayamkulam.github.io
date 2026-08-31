@@ -19,6 +19,7 @@ import { SCHOOL_CLASSES } from "@/config/schoolClasses";
 import { resolveProfileGeo } from "@/data/profileGeo";
 import { school } from "@/config/school";
 import { cn } from "@/utils/cn";
+import { classOfLabel } from "@/utils/profile";
 
 /** Comma-separated inputs are friendlier here than a tag widget. */
 const splitList = (value: FormDataEntryValue | null): string[] =>
@@ -132,8 +133,10 @@ export function ProfileEditPage() {
             </h1>
             <p className="text-sm text-ink-soft">
               {editingOther
-                ? `${profile.fullName} · Class of ${profile.gradYear}`
-                : `Class of ${profile.gradYear}`}
+                ? [profile.fullName, classOfLabel(profile.gradYear)]
+                    .filter(Boolean)
+                    .join(" · ")
+                : (classOfLabel(profile.gradYear) ?? "Add your 10th-standard year")}
             </p>
           </div>
         </div>

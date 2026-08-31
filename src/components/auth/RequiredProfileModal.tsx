@@ -46,7 +46,7 @@ export function RequiredProfileModal() {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-0 sm:items-center sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-ink/50 p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="required-profile-title"
@@ -54,9 +54,9 @@ export function RequiredProfileModal() {
       <div className="flex max-h-[min(92dvh,40rem)] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-paper shadow-2xl sm:rounded-3xl">
         <form
           onSubmit={(event) => void handleSubmit(event)}
-          className="flex min-h-0 flex-1 flex-col"
+          className="flex min-h-0 max-h-[min(92dvh,40rem)] flex-1 flex-col"
         >
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-7">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6 py-6 sm:px-7">
             <h2
               id="required-profile-title"
               className="font-display text-2xl font-semibold"

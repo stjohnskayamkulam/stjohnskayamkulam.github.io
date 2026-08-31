@@ -58,6 +58,9 @@ describe("sessionNeedsRequiredProfile", () => {
       }),
     ).toBe(true);
     expect(sessionNeedsRequiredProfile({ profile: base })).toBe(false);
+    expect(sessionNeedsRequiredProfile({ profile: { ...base, gradYear: 0 } })).toBe(
+      true,
+    );
     expect(sessionNeedsRequiredProfile(null)).toBe(false);
   });
 });

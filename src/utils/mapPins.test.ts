@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMapPins } from "./mapPins";
+import { buildMapPins, countriesFromPins } from "./mapPins";
 import type { Viewer } from "./visibility";
 import {
   DEFAULT_FIELD_VISIBILITY,
@@ -79,6 +79,7 @@ describe("buildMapPins", () => {
     expect(pins).toHaveLength(2);
     const bengaluru = pins.find((pin) => pin.label === "Bengaluru, India")!;
     expect(bengaluru.people.map((p) => p.uid)).toEqual(["b", "a"]);
+    expect(bengaluru.country).toBe("India");
   });
 
   it("merges spelling variants of the same city into one pin", () => {
@@ -147,6 +148,24 @@ describe("buildMapPins", () => {
 
     expect(pins[0].label).toBe("Bengaluru, India");
     expect(pins[0].people).toHaveLength(2);
+  });
+
+  it("lists every country, not a truncated top N", () => {
+    const { pins } = buildMapPins(
+      [
+        entry({ uid: "a", city: "Bengaluru", country: "India" }),
+        entry({ uid: "b", city: "Bengaluru", country: "India" }),
+        entry({ uid: "c", city: "Toronto", country: "Canada" }),
+        entry({ uid: "d", city: "Dubai", country: "United Arab Emirates" }),
+      ],
+      signedInViewer,
+    );
+
+    expect(countriesFromPins(pins)).toEqual([
+      { country: "India", count: 2 },
+      { country: "Canada", count: 1 },
+      { country: "United Arab Emirates", count: 1 },
+    ]);
   });
 
   describe("privacy", () => {

@@ -22,6 +22,7 @@ function pin(overrides: Partial<MapPin> = {}): MapPin {
     coords: [12.9716, 77.5946],
     precision: "city",
     label: "Bengaluru, India",
+    country: "India",
     people: [
       {
         uid: "a-mariathomas",

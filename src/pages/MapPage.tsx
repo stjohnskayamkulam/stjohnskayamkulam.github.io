@@ -9,8 +9,9 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { SelectField } from "@/components/ui/Field";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
-import { buildMapPins, type MapPin as Pin } from "@/utils/mapPins";
+import { buildMapPins, countriesFromPins, type MapPin as Pin } from "@/utils/mapPins";
 import { useGeocodedPlaces } from "@/hooks/useGeocodedPlaces";
+import { classOfLabel } from "@/utils/profile";
 import type { Viewer } from "@/utils/visibility";
 
 /**
@@ -167,7 +168,17 @@ export function MapPage() {
               <UnplacedNote unplaced={unplaced} />
             </div>
 
-            <aside ref={detailsRef}>
+            <aside
+              ref={detailsRef}
+              className="space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1"
+            >
+              <CountryList
+                pins={pins}
+                onSelectCountry={(country) => {
+                  const match = pins.find((pin) => pin.country === country);
+                  if (match) setSelectedPinId(match.id);
+                }}
+              />
               {selectedPin ? (
                 <SelectedLocation
                   pin={selectedPin}
@@ -238,7 +249,7 @@ function SelectedLocation({ pin, onClear }: { pin: Pin; onClear: () => void }) {
         </button>
       </div>
 
-      <ul className="mt-4 divide-y divide-black/5">
+      <ul className="mt-4 max-h-80 divide-y divide-black/5 overflow-y-auto overscroll-contain">
         {pin.people.map((person) => (
           <li key={person.uid} className="py-3 first:pt-0 last:pb-0">
             <Link
@@ -251,8 +262,9 @@ function SelectedLocation({ pin, onClear }: { pin: Pin; onClear: () => void }) {
                   {person.fullName}
                 </span>
                 <span className="block truncate text-xs text-ink-soft">
-                  Class of {person.gradYear}
-                  {person.profession && ` · ${person.profession}`}
+                  {[classOfLabel(person.gradYear), person.profession]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
               </span>
             </Link>
@@ -263,7 +275,7 @@ function SelectedLocation({ pin, onClear }: { pin: Pin; onClear: () => void }) {
   );
 }
 
-/** Shown until a pin is picked — the map's ranking, as a readable list. */
+/** Shown until a pin is picked — every place on the map, scrollable. */
 function TopLocations({
   pins,
   onSelect,
@@ -271,16 +283,14 @@ function TopLocations({
   pins: Pin[];
   onSelect: (id: string) => void;
 }) {
-  const top = pins.slice(0, 10);
-
   return (
     <div className="card p-5">
       <h2 className="font-semibold text-ink">Where alumni are</h2>
       <p className="mt-1 text-sm text-ink-soft">
         Select a place to see who is there.
       </p>
-      <ul className="mt-4 space-y-1">
-        {top.map((pin) => (
+      <ul className="mt-4 max-h-80 space-y-1 overflow-y-auto overscroll-contain">
+        {pins.map((pin) => (
           <li key={pin.id}>
             <button
               onClick={() => onSelect(pin.id)}
@@ -294,12 +304,42 @@ function TopLocations({
           </li>
         ))}
       </ul>
-      {pins.length > top.length && (
-        <p className="mt-3 px-2 text-xs text-ink-soft">
-          +{pins.length - top.length} more{" "}
-          {pins.length - top.length === 1 ? "place" : "places"} on the map
-        </p>
-      )}
+    </div>
+  );
+}
+
+function CountryList({
+  pins,
+  onSelectCountry,
+}: {
+  pins: Pin[];
+  onSelectCountry: (country: string) => void;
+}) {
+  const countries = countriesFromPins(pins);
+  if (countries.length === 0) return null;
+
+  return (
+    <div className="card p-5">
+      <h2 className="font-semibold text-ink">Countries</h2>
+      <p className="mt-1 text-sm text-ink-soft">
+        Every country with someone on the map.
+      </p>
+      <ul className="mt-4 max-h-80 space-y-1 overflow-y-auto overscroll-contain">
+        {countries.map(({ country, count }) => (
+          <li key={country}>
+            <button
+              type="button"
+              onClick={() => onSelectCountry(country)}
+              className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left text-sm hover:bg-brand-soft/40"
+            >
+              <span className="min-w-0 truncate">{country}</span>
+              <span className="shrink-0 text-xs font-medium text-ink-soft">
+                {count}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

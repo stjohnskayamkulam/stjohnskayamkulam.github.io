@@ -27,6 +27,7 @@ import { buttonClass } from "@/components/ui/buttonStyles";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
 import { EVENT_TYPE_LABELS } from "@/types";
 import { formatEventDate, formatTime, isUpcoming } from "@/utils/date";
+import { classOfLabel, isRecordedGradYear } from "@/utils/profile";
 
 export function EventDetailPage() {
   const { id = "" } = useParams();
@@ -155,9 +156,9 @@ export function EventDetailPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <Badge tone="brand">{EVENT_TYPE_LABELS[data.eventType]}</Badge>
-            {data.classYear && (
+            {isRecordedGradYear(data.classYear) && (
               <Link to={`/alumni?year=${data.classYear}`}>
-                <Badge tone="accent">Class of {data.classYear}</Badge>
+                <Badge tone="accent">{classOfLabel(data.classYear)}</Badge>
               </Link>
             )}
             {!upcoming && <Badge tone="neutral">Past event</Badge>}
@@ -205,9 +206,11 @@ export function EventDetailPage() {
                       />
                       <span className="text-sm">
                         {attendee.displayName}
-                        <span className="ml-1.5 text-xs text-ink-soft">
-                          &apos;{String(attendee.gradYear).slice(-2)}
-                        </span>
+                        {isRecordedGradYear(attendee.gradYear) && (
+                          <span className="ml-1.5 text-xs text-ink-soft">
+                            &apos;{String(attendee.gradYear).slice(-2)}
+                          </span>
+                        )}
                       </span>
                     </Link>
                   </li>

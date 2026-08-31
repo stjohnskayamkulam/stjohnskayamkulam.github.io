@@ -10,6 +10,7 @@ import { geoEqualEarth, geoGraticule10, geoPath } from "d3-geo";
 import { Globe2, Minus, Plus } from "lucide-react";
 import { cn } from "@/utils/cn";
 import type { MapPin } from "@/utils/mapPins";
+import { isRecordedGradYear } from "@/utils/profile";
 import { loadCountryOutlines, type CountryFeature } from "./worldAtlas";
 
 /**
@@ -825,7 +826,11 @@ function MapTooltip({
           {shown.map((person) => (
             <li key={person.uid} className="text-xs leading-snug">
               <span className="font-medium text-ink">{person.fullName}</span>
-              <span className="text-ink-soft"> · {person.gradYear}</span>
+              <span className="text-ink-soft">
+                {isRecordedGradYear(person.gradYear)
+                  ? ` · ${person.gradYear}`
+                  : ""}
+              </span>
               {person.profession && (
                 <span className="block text-ink-soft">
                   {person.profession}

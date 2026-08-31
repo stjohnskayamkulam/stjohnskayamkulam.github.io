@@ -401,3 +401,30 @@ describe("setUserRole", () => {
     ).rejects.toThrow(/cannot be changed/i);
   });
 });
+
+describe("class years", () => {
+  it("omits placeholder graduation year 0 from class lists and counts", async () => {
+    const known = member("u-ana", {
+      firstName: "Ana",
+      lastName: "Nair",
+      gradYear: 2010,
+      country: "India",
+    });
+    const unset = member("u-new", {
+      firstName: "New",
+      lastName: "Member",
+      gradYear: 0,
+      country: "India",
+    });
+    putMockMember(known.account, known.profile);
+    putMockMember(unset.account, unset.profile);
+
+    expect(await mockDataProvider.listClassYears()).toEqual([
+      { year: 2010, memberCount: 1 },
+    ]);
+    expect((await mockDataProvider.getDirectoryFacets()).gradYears).toEqual([
+      2010,
+    ]);
+    expect((await mockDataProvider.getCommunityStats()).classCount).toBe(1);
+  });
+});

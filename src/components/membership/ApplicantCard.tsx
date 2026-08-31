@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/Button";
 import { approvalProgress, canApprove } from "@/services/membershipService";
 import { REQUIRED_APPROVALS, type AlumniProfile } from "@/types";
 import { formatRelative } from "@/utils/date";
+import { classOfLabel } from "@/utils/profile";
 
 /**
  * One applicant waiting on peer approval. Used both on the member-facing
@@ -44,9 +45,9 @@ export function ApplicantCard({
           </Badge>
         </div>
         <p className="text-sm text-ink-soft">
-          Class of {applicant.gradYear}
-          {applicant.batch && ` · ${applicant.batch}`}
-          {applicant.city && ` · ${applicant.city}`}
+          {[classOfLabel(applicant.gradYear), applicant.batch, applicant.city]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         <p className="mt-1 text-xs text-ink-soft">
           Applied {formatRelative(applicant.createdAt)}

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { CalendarDays, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { EVENT_TYPE_LABELS, type SchoolEvent } from "@/types";
+import { classOfLabel, isRecordedGradYear } from "@/utils/profile";
 import {
   formatEventDate,
   formatTime,
@@ -33,8 +34,8 @@ export function EventCard({ event }: { event: SchoolEvent }) {
           <Badge tone={past ? "neutral" : "brand"}>
             {EVENT_TYPE_LABELS[event.eventType]}
           </Badge>
-          {event.classYear && (
-            <Badge tone="accent">Class of {event.classYear}</Badge>
+          {isRecordedGradYear(event.classYear) && (
+            <Badge tone="accent">{classOfLabel(event.classYear)}</Badge>
           )}
           {past && <Badge tone="neutral">Past</Badge>}
         </div>

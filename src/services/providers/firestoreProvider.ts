@@ -46,6 +46,7 @@ import { getFirebase } from "@/services/firebase";
 import { isSuperAdminEmail } from "@/config/admins";
 import { parseClassesAttended } from "@/config/schoolClasses";
 import { shouldFallbackToRedirect } from "@/utils/authErrors";
+import { isRecordedGradYear } from "@/utils/profile";
 import { DEFAULT_FIELD_VISIBILITY, REQUIRED_APPROVALS } from "@/types";
 import type {
   AdminStats,
@@ -439,9 +440,9 @@ export const firestoreDataProvider: DataProvider = {
   async getDirectoryFacets() {
     const rows = await fetchVerifiedProfiles();
     const facets: DirectoryFacets = {
-      gradYears: [...new Set(rows.map((p) => p.gradYear))].sort(
-        (a, b) => b - a,
-      ),
+      gradYears: [...new Set(rows.map((p) => p.gradYear))]
+        .filter(isRecordedGradYear)
+        .sort((a, b) => b - a),
       cities: uniqueSorted(rows.map((p) => p.city)),
       countries: uniqueSorted(rows.map((p) => p.country)),
       professions: uniqueSorted(rows.map((p) => p.profession)),
@@ -507,8 +508,10 @@ export const firestoreDataProvider: DataProvider = {
   async listClassYears() {
     const rows = await fetchVerifiedProfiles();
     const counts = new Map<number, number>();
-    for (const p of rows)
+    for (const p of rows) {
+      if (!isRecordedGradYear(p.gradYear)) continue;
       counts.set(p.gradYear, (counts.get(p.gradYear) ?? 0) + 1);
+    }
     return [...counts.entries()]
       .map(([year, memberCount]) => ({ year, memberCount }))
       .sort((a, b) => b.year - a.year);
@@ -626,7 +629,9 @@ export const firestoreDataProvider: DataProvider = {
     ]);
     const stats: CommunityStats = {
       alumniCount: alumniCount.data().count,
-      classCount: new Set(profiles.map((p) => p.gradYear)).size,
+      classCount: new Set(
+        profiles.map((p) => p.gradYear).filter(isRecordedGradYear),
+      ).size,
       countryCount: new Set(profiles.map((p) => p.country).filter(Boolean))
         .size,
       upcomingEventCount: events.length,
@@ -654,7 +659,9 @@ export const firestoreDataProvider: DataProvider = {
       totalAlumni: total.data().count,
       pendingApprovals: pending.data().count,
       upcomingEvents: events.length,
-      activeClasses: new Set(profiles.map((p) => p.gradYear)).size,
+      activeClasses: new Set(
+        profiles.map((p) => p.gradYear).filter(isRecordedGradYear),
+      ).size,
       newMembersThisMonth: newMembers.data().count,
     };
     return stats;

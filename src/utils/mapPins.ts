@@ -42,6 +42,8 @@ export interface MapPin {
   precision: LocationPrecision;
   /** e.g. "Bengaluru, India", or just "India" for a country-level pin. */
   label: string;
+  /** Canonical country name used to list countries on the map page. */
+  country: string;
   people: MapPerson[];
 }
 
@@ -115,10 +117,11 @@ export function buildMapPins(
 
     const place = interpretPlace(city, country);
     const id = `${resolved.coords[0]},${resolved.coords[1]}`;
+    const countryName = place.country || country || "";
     const label =
       resolved.precision === "city"
-        ? displayLocation(place.city || city, place.country || country)
-        : (place.country || country || "");
+        ? displayLocation(place.city || city, countryName)
+        : countryName;
 
     const entry: MapPerson = {
       uid: person.uid,
@@ -142,6 +145,7 @@ export function buildMapPins(
       if (existing.precision === "country" && resolved.precision === "city") {
         existing.precision = "city";
         existing.label = label;
+        if (countryName) existing.country = countryName;
       }
     } else {
       byCoords.set(id, {
@@ -149,6 +153,7 @@ export function buildMapPins(
         coords: resolved.coords,
         precision: resolved.precision,
         label,
+        country: countryName,
         people: [entry],
       });
     }
@@ -167,4 +172,18 @@ export function buildMapPins(
   }
 
   return { pins, unplaced: { hidden, unknown } };
+}
+
+/** One row per country, largest first — every country with a pin, not a top-N. */
+export function countriesFromPins(
+  pins: MapPin[],
+): { country: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const pin of pins) {
+    if (!pin.country) continue;
+    counts.set(pin.country, (counts.get(pin.country) ?? 0) + pin.people.length);
+  }
+  return [...counts.entries()]
+    .map(([country, count]) => ({ country, count }))
+    .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country));
 }

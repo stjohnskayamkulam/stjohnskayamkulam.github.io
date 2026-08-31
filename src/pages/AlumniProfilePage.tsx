@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/Badge";
 import { buttonClass } from "@/components/ui/buttonStyles";
 import { EmptyState, ErrorState, LoadingBlock } from "@/components/ui/States";
 import { canSeeField } from "@/utils/visibility";
+import { classOfLabel, isRecordedGradYear } from "@/utils/profile";
 import { HELP_OFFER_LABELS, type AlumniProfile } from "@/types";
 import {
   formatClassesAttended,
@@ -47,6 +48,7 @@ export function AlumniProfilePage() {
   }
 
   const person = profile.data;
+  const yearLabel = classOfLabel(person.gradYear);
   const isSelf = session?.account.uid === person.uid;
   const attended = parseClassesAttended(person.yearsAttended);
 
@@ -88,10 +90,12 @@ export function AlumniProfilePage() {
 
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="brand">
-                  <GraduationCap className="size-3" aria-hidden />
-                  Class of {person.gradYear}
-                </Badge>
+                {yearLabel && (
+                  <Badge tone="brand">
+                    <GraduationCap className="size-3" aria-hidden />
+                    {yearLabel}
+                  </Badge>
+                )}
                 {person.batch && <Badge tone="neutral">{person.batch}</Badge>}
               </div>
 
@@ -190,7 +194,9 @@ export function AlumniProfilePage() {
                   value={formatClassesAttended(attended)}
                 />
               )}
-              <Row label="Graduated" value={String(person.gradYear)} />
+              {isRecordedGradYear(person.gradYear) && (
+                <Row label="Graduated" value={String(person.gradYear)} />
+              )}
               {person.batch && <Row label="Batch" value={person.batch} />}
               {person.clubs.length > 0 && (
                 <Row label="Clubs" value={person.clubs.join(", ")} />
@@ -199,12 +205,14 @@ export function AlumniProfilePage() {
                 <Row label="Activities" value={person.activities.join(", ")} />
               )}
             </dl>
-            <Link
-              to={`/alumni?year=${person.gradYear}`}
-              className={buttonClass("outline", "sm", "mt-5 w-full")}
-            >
-              See the Class of {person.gradYear}
-            </Link>
+            {yearLabel && (
+              <Link
+                to={`/alumni?year=${person.gradYear}`}
+                className={buttonClass("outline", "sm", "mt-5 w-full")}
+              >
+                See the {yearLabel}
+              </Link>
+            )}
           </Panel>
 
           {person.interests.length > 0 && (

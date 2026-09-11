@@ -95,9 +95,16 @@ interface Props {
   pins: MapPin[];
   selectedPinId: string | null;
   onSelectPin: (pinId: string | null) => void;
+  /** Stretch to the parent instead of a fixed aspect ratio. */
+  fill?: boolean;
 }
 
-export function WorldMap({ pins, selectedPinId, onSelectPin }: Props) {
+export function WorldMap({
+  pins,
+  selectedPinId,
+  onSelectPin,
+  fill = false,
+}: Props) {
   const [land, setLand] = useState<CountryFeature[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
@@ -265,35 +272,44 @@ export function WorldMap({ pins, selectedPinId, onSelectPin }: Props) {
   const radiusPx = (count: number) => Math.min(6 + Math.sqrt(count) * 2.2, 17);
   const targetPx = coarsePointer ? TOUCH_TARGET_PX : MOUSE_TARGET_PX;
 
-  const frameClass =
-    "relative w-full overflow-hidden rounded-[var(--radius-card)] border border-black/5 bg-white";
+  const frameClass = cn(
+    "relative w-full overflow-hidden bg-white",
+    fill
+      ? "h-full min-h-[20rem] rounded-none border-y border-black/5"
+      : "rounded-[var(--radius-card)] border border-black/5",
+  );
   // Taller than the world's own 2.26:1 on a phone, where a full-width strip of
   // the planet is only ~160 px tall — too little to tell two cities apart. Not
   // much taller, though: the extra height is only filled once the view zooms in,
   // so an over-tall frame just banks white space above and below the equator.
-  const aspectClass = "aspect-4/3 sm:aspect-[2.26/1]";
+  const aspectClass = fill ? null : "aspect-4/3 sm:aspect-[2.26/1]";
 
   if (loadError) {
     return (
       <div
         className={cn(
-          "card flex items-center justify-center p-8 text-center",
+          "flex items-center justify-center p-8 text-center",
+          fill ? "h-full bg-white" : "card",
           aspectClass,
         )}
       >
         <p className="max-w-sm text-sm text-ink-soft">
-          The map could not be loaded. The locations are still listed alongside
-          it.
+          The map could not be loaded. The locations are still listed below.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="relative">
+    <div className={cn("relative", fill && "h-full")}>
       <div
         ref={frameRef}
-        className={cn(frameClass, aspectClass, "touch-pan-y select-none")}
+        className={cn(
+          frameClass,
+          aspectClass,
+          fill ? "touch-none" : "touch-pan-y",
+          "select-none",
+        )}
         onPointerDown={gesture.onPointerDown}
         onPointerMove={gesture.onPointerMove}
         onPointerUp={gesture.onPointerEnd}

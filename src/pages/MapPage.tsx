@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { EyeOff, Globe2, MapPin, X } from "lucide-react";
+import { EyeOff, Globe2, MapPin, X, ChevronDown } from "lucide-react";
 import { useAsync } from "@/hooks/useAsync";
 import { useAuth } from "@/hooks/useAuth";
 import { listClassYears, searchAlumni } from "@/services/alumniService";
@@ -60,13 +60,12 @@ export function MapPage() {
 
   const selectedPin = pins.find((pin) => pin.id === selectedPinId) ?? null;
 
-  // Stacked single-column, the names sit below the map and off the screen, so a
-  // tap on a pin would look like it did nothing. Bring them to the reader.
-  const detailsRef = useRef<HTMLElement>(null);
+  // The names live below the map. A tap on a pin is wasted if the list
+  // never comes into view.
+  const detailsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!selectedPinId) return;
-    if (window.matchMedia("(min-width: 1024px)").matches) return;
-    detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [selectedPinId]);
 
   function setYear(value: string) {
@@ -78,120 +77,177 @@ export function MapPage() {
     setSelectedPinId(null);
   }
 
-  return (
-    <div className="section py-12">
-      <header className="mb-8 max-w-2xl">
-        <p className="text-xs font-semibold tracking-[0.18em] text-brand uppercase">
-          Where did everyone go?
-        </p>
-        <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">
-          Alumni around the world
-        </h1>
-        <p className="mt-3 text-ink-soft">
-          Every pin is a city someone from the school now calls home. Tap or
-          hover a pin to see who is there, or pick a graduating year to follow
-          one class across the map.
-        </p>
-      </header>
+  const status = (
+    <p className="text-sm text-ink-soft" role="status">
+      {totalPlaced} {totalPlaced === 1 ? "alumnus" : "alumni"} across{" "}
+      {pins.length} {pins.length === 1 ? "location" : "locations"}
+      {gradYear != null && ` · Class of ${gradYear}`}
+    </p>
+  );
 
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <div className="w-56">
-          <SelectField
-            label="Graduating class"
-            value={yearParam ?? ""}
-            onChange={(event) => setYear(event.target.value)}
-          >
-            <option value="">All classes</option>
-            {classYears.data?.map(({ year, memberCount }) => (
-              <option key={year} value={year}>
-                Class of {year} ({memberCount})
-              </option>
-            ))}
-          </SelectField>
-        </div>
-
-        {gradYear != null && (
-          <Button variant="ghost" onClick={() => setYear("")}>
-            <X className="size-4" aria-hidden />
-            All classes
-          </Button>
-        )}
+  const classFilter = (
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="w-56">
+        <SelectField
+          label="Graduating class"
+          value={yearParam ?? ""}
+          onChange={(event) => setYear(event.target.value)}
+        >
+          <option value="">All classes</option>
+          {classYears.data?.map(({ year, memberCount }) => (
+            <option key={year} value={year}>
+              Class of {year} ({memberCount})
+            </option>
+          ))}
+        </SelectField>
       </div>
-
-      {alumni.error ? (
-        <ErrorState error={alumni.error} onRetry={alumni.reload} />
-      ) : alumni.loading ? (
-        <LoadingBlock label="Placing everyone on the map…" />
-      ) : pins.length === 0 ? (
-        <EmptyState
-          icon={<Globe2 className="size-8" />}
-          title={
-            gradYear != null
-              ? `Nobody from the Class of ${gradYear} has shared a location`
-              : "No locations to show yet"
-          }
-          description="Members appear here once they add a city to their profile and choose to share it."
-          action={
-            gradYear != null ? (
-              <Button
-                variant="outline"
-                onClick={() => setYear("")}
-                className="mt-2"
-              >
-                Show all classes
-              </Button>
-            ) : (
-              <Link
-                to="/profile"
-                className="mt-2 text-sm text-brand hover:underline"
-              >
-                Add your own location
-              </Link>
-            )
-          }
-        />
-      ) : (
-        <>
-          <p className="mb-4 text-sm text-ink-soft" role="status">
-            {totalPlaced} {totalPlaced === 1 ? "alumnus" : "alumni"} across{" "}
-            {pins.length} {pins.length === 1 ? "location" : "locations"}
-            {gradYear != null && ` · Class of ${gradYear}`}
-          </p>
-
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <WorldMap
-                pins={pins}
-                selectedPinId={selectedPinId}
-                onSelectPin={setSelectedPinId}
-              />
-              <UnplacedNote unplaced={unplaced} />
-            </div>
-
-            <aside
-              ref={detailsRef}
-              className="space-y-6 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1"
-            >
-              <CountryList
-                pins={pins}
-                onSelectCountry={(country) => {
-                  const match = pins.find((pin) => pin.country === country);
-                  if (match) setSelectedPinId(match.id);
-                }}
-              />
-              {selectedPin ? (
-                <SelectedLocation
-                  pin={selectedPin}
-                  onClear={() => setSelectedPinId(null)}
-                />
-              ) : (
-                <TopLocations pins={pins} onSelect={setSelectedPinId} />
-              )}
-            </aside>
-          </div>
-        </>
+      {gradYear != null && (
+        <Button variant="ghost" onClick={() => setYear("")}>
+          <X className="size-4" aria-hidden />
+          All classes
+        </Button>
       )}
     </div>
+  );
+
+  if (alumni.error) {
+    return (
+      <div className="section py-12">
+        <MapIntro />
+        {classFilter}
+        <div className="mt-8">
+          <ErrorState error={alumni.error} onRetry={alumni.reload} />
+        </div>
+      </div>
+    );
+  }
+
+  if (alumni.loading) {
+    return (
+      <div className="section py-12">
+        <MapIntro />
+        <LoadingBlock label="Placing everyone on the map…" />
+      </div>
+    );
+  }
+
+  if (pins.length === 0) {
+    return (
+      <div className="section py-12">
+        <MapIntro />
+        <div className="mt-6">{classFilter}</div>
+        <div className="mt-8">
+          <EmptyState
+            icon={<Globe2 className="size-8" />}
+            title={
+              gradYear != null
+                ? `Nobody from the Class of ${gradYear} has shared a location`
+                : "No locations to show yet"
+            }
+            description="Members appear here once they add a city to their profile and choose to share it."
+            action={
+              gradYear != null ? (
+                <Button
+                  variant="outline"
+                  onClick={() => setYear("")}
+                  className="mt-2"
+                >
+                  Show all classes
+                </Button>
+              ) : (
+                <Link
+                  to="/profile"
+                  className="mt-2 text-sm text-brand hover:underline"
+                >
+                  Add your own location
+                </Link>
+              )
+            }
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <section
+        className="relative h-[calc(100dvh-4rem-5.5rem)] lg:h-[calc(100dvh-4rem)]"
+        aria-label="Alumni map"
+      >
+        <WorldMap
+          fill
+          pins={pins}
+          selectedPinId={selectedPinId}
+          onSelectPin={setSelectedPinId}
+        />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-wrap items-start justify-between gap-3 p-3 sm:p-4">
+          <div className="pointer-events-auto rounded-2xl border border-black/5 bg-white/95 p-3 shadow-sm backdrop-blur-sm">
+            {classFilter}
+          </div>
+          <p
+            className="pointer-events-none rounded-full bg-white/95 px-3 py-1.5 text-xs text-ink-soft shadow-sm backdrop-blur-sm"
+            role="status"
+          >
+            {totalPlaced} {totalPlaced === 1 ? "alumnus" : "alumni"} ·{" "}
+            {pins.length} {pins.length === 1 ? "place" : "places"}
+            {gradYear != null && ` · Class of ${gradYear}`}
+          </p>
+        </div>
+        <a
+          href="#map-lists"
+          className="absolute inset-x-0 bottom-3 z-10 mx-auto flex w-fit items-center gap-1 rounded-full bg-white/95 px-3 py-1.5 text-xs font-medium text-ink-soft shadow-sm backdrop-blur-sm hover:text-ink"
+        >
+          Countries and names
+          <ChevronDown className="size-3.5" aria-hidden />
+        </a>
+      </section>
+
+      <div id="map-lists" className="section scroll-mt-20 py-10 lg:py-14">
+        <MapIntro />
+        <p className="mt-4">{status}</p>
+        <UnplacedNote unplaced={unplaced} />
+
+        <div
+          ref={detailsRef}
+          className="mt-8 grid gap-6 md:grid-cols-2"
+        >
+          <CountryList
+            pins={pins}
+            onSelectCountry={(country) => {
+              const match = pins.find((pin) => pin.country === country);
+              if (match) setSelectedPinId(match.id);
+            }}
+          />
+          {selectedPin ? (
+            <SelectedLocation
+              pin={selectedPin}
+              onClear={() => setSelectedPinId(null)}
+            />
+          ) : (
+            <TopLocations pins={pins} onSelect={setSelectedPinId} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MapIntro() {
+  return (
+    <header className="max-w-2xl">
+      <p className="text-xs font-semibold tracking-[0.18em] text-brand uppercase">
+        Where did everyone go?
+      </p>
+      <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">
+        Alumni around the world
+      </h1>
+      <p className="mt-3 text-ink-soft">
+        Every pin is a city someone from the school now calls home. Tap or
+        hover a pin to see who is there, or pick a graduating year to follow
+        one class across the map.
+      </p>
+    </header>
   );
 }
 
@@ -249,7 +305,7 @@ function SelectedLocation({ pin, onClear }: { pin: Pin; onClear: () => void }) {
         </button>
       </div>
 
-      <ul className="mt-4 max-h-80 divide-y divide-black/5 overflow-y-auto overscroll-contain">
+      <ul className="mt-4 divide-y divide-black/5">
         {pin.people.map((person) => (
           <li key={person.uid} className="py-3 first:pt-0 last:pb-0">
             <Link
@@ -289,7 +345,7 @@ function TopLocations({
       <p className="mt-1 text-sm text-ink-soft">
         Select a place to see who is there.
       </p>
-      <ul className="mt-4 max-h-80 space-y-1 overflow-y-auto overscroll-contain">
+      <ul className="mt-4 space-y-1">
         {pins.map((pin) => (
           <li key={pin.id}>
             <button
@@ -324,7 +380,7 @@ function CountryList({
       <p className="mt-1 text-sm text-ink-soft">
         Every country with someone on the map.
       </p>
-      <ul className="mt-4 max-h-80 space-y-1 overflow-y-auto overscroll-contain">
+      <ul className="mt-4 space-y-1">
         {countries.map(({ country, count }) => (
           <li key={country}>
             <button

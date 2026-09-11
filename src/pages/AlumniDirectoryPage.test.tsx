@@ -123,6 +123,15 @@ beforeEach(() => {
 });
 
 describe("AlumniDirectoryPage", () => {
+  it("fills filter dropdowns from directory facets", async () => {
+    renderPage(2001);
+    await userEvent.click(screen.getByRole("button", { name: /filters/i }));
+
+    const year = screen.getByLabelText("Graduation year");
+    expect(year).toHaveTextContent("2001");
+    expect(year).toHaveTextContent("1998");
+  });
+
   it("shows no class context until a year is chosen", async () => {
     renderPage(2001);
     await screen.findByText("Anita Raj");

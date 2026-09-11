@@ -157,6 +157,8 @@ service cloud.firestore {
 
       // Directory queries, and the peer-approval queue: verified members need
       // to see pending applicants in order to vouch for them.
+      // `request.query.limit` is null when the client omits limit(), and
+      // `null <= 500` is false — so every verified list must send a cap.
       allow list: if isAdmin() || (isVerified() && request.query.limit <= 500);
 
       // Applicants start with no approvals. The bootstrap Google account may

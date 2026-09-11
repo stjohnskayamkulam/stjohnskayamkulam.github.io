@@ -318,8 +318,16 @@ const uniqueSorted = (values: (string | undefined)[]): string[] =>
     a.localeCompare(b),
   );
 
+/**
+ * Must stay at or below the `request.query.limit` cap in firestore.rules.
+ * An unbounded list has `limit == null`, which fails that comparison, so
+ * filter facets (and any other verified listing) must always send a cap.
+ */
+export const PROFILE_LIST_LIMIT = 500;
+
 async function fetchVerifiedProfiles(
   constraints: QueryConstraint[] = [],
+  limitCount = PROFILE_LIST_LIMIT,
 ): Promise<AlumniProfile[]> {
   const { db } = getFirebase();
   const snap = await getDocs(
@@ -327,6 +335,7 @@ async function fetchVerifiedProfiles(
       collection(db, "profiles"),
       where("status", "==", "verified"),
       ...constraints,
+      fsLimit(limitCount),
     ),
   );
   return snap.docs.map((d) => toProfile(d.id, d.data()));
@@ -346,9 +355,11 @@ export const firestoreDataProvider: DataProvider = {
     else if (filters.company)
       constraints.push(where("company", "==", filters.company));
     constraints.push(orderBy("gradYear", "desc"));
-    if (!filters.query) constraints.push(fsLimit(options?.limit ?? 300));
 
-    const rows = await fetchVerifiedProfiles(constraints);
+    const rows = await fetchVerifiedProfiles(
+      constraints,
+      options?.limit ?? PROFILE_LIST_LIMIT,
+    );
     const q = filters.query?.trim().toLowerCase();
 
     const filtered = rows.filter((p) => {

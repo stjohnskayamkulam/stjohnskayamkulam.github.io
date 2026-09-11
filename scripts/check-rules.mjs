@@ -19,7 +19,17 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
 
 // Read the port the CLI was told to use rather than repeating it, so the two
 // cannot drift. FIRESTORE_EMULATOR_PORT overrides it when 8080 is already busy.
@@ -351,6 +361,33 @@ const checks = [
     async () => {
       await assertFails(
         updateDoc(doc(as(JOHN), 'profiles', MARIA), { city: 'Kochi' }),
+      );
+    },
+  ],
+  [
+    'a verified member cannot list profiles without a limit',
+    async () => {
+      await assertFails(
+        getDocs(
+          query(
+            collection(as(MARIA), 'profiles'),
+            where('status', '==', 'verified'),
+          ),
+        ),
+      );
+    },
+  ],
+  [
+    'a verified member can list profiles when the query is capped',
+    async () => {
+      await assertSucceeds(
+        getDocs(
+          query(
+            collection(as(MARIA), 'profiles'),
+            where('status', '==', 'verified'),
+            limit(500),
+          ),
+        ),
       );
     },
   ],

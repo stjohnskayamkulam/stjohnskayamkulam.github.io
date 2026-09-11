@@ -153,6 +153,14 @@ export function AlumniDirectoryPage() {
 
       {showFilters && (
         <div className="card mb-8 grid gap-4 p-6 sm:grid-cols-2 lg:grid-cols-4">
+          {facets.error && (
+            <p
+              className="text-sm text-red-600 sm:col-span-2 lg:col-span-4"
+              role="alert"
+            >
+              {facets.error.message}
+            </p>
+          )}
           <SelectField
             label="Graduation year"
             value={params.get("year") ?? ""}

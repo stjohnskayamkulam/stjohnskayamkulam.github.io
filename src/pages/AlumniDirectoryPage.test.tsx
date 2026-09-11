@@ -130,6 +130,7 @@ describe("AlumniDirectoryPage", () => {
     const year = screen.getByLabelText("Graduation year");
     expect(year).toHaveTextContent("2001");
     expect(year).toHaveTextContent("1998");
+    expect(screen.queryByLabelText(/class \/ batch/i)).not.toBeInTheDocument();
   });
 
   it("shows no class context until a year is chosen", async () => {

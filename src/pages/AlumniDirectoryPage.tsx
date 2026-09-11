@@ -23,7 +23,6 @@ import { HELP_OFFER_LABELS, type AlumniFilters, type HelpOffer } from "@/types";
 const FILTER_KEYS = [
   "q",
   "year",
-  "batch",
   "city",
   "country",
   "profession",
@@ -44,7 +43,6 @@ export function AlumniDirectoryPage() {
     () => ({
       query: debouncedQuery || undefined,
       gradYear: params.get("year") ? Number(params.get("year")) : null,
-      batch: params.get("batch") ?? undefined,
       city: params.get("city") ?? undefined,
       country: params.get("country") ?? undefined,
       profession: params.get("profession") ?? undefined,
@@ -170,19 +168,6 @@ export function AlumniDirectoryPage() {
             {facets.data?.gradYears.map((year) => (
               <option key={year} value={year}>
                 {year}
-              </option>
-            ))}
-          </SelectField>
-
-          <SelectField
-            label="Class / batch"
-            value={params.get("batch") ?? ""}
-            onChange={(e) => setFilter("batch", e.target.value)}
-          >
-            <option value="">Any batch</option>
-            {facets.data?.batches.map((batch) => (
-              <option key={batch} value={batch}>
-                {batch}
               </option>
             ))}
           </SelectField>

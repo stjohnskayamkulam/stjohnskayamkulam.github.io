@@ -38,4 +38,27 @@ describe("geocodePlace", () => {
     await geocodePlace("Adoor", "India");
     expect(fetch).toHaveBeenCalledOnce();
   });
+
+  it("refuses a match in a country the member did not name", async () => {
+    // GeoNames answers "Cochin" with a village in Saskatchewan and nothing in
+    // India. Taking the first hit would plot a Kerala alumnus in Canada.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          results: [
+            {
+              name: "Cochin",
+              latitude: 53.08346,
+              longitude: -108.33465,
+              country: "Canada",
+            },
+          ],
+        }),
+      })),
+    );
+
+    expect(await geocodePlace("Cochin", "India")).toBeNull();
+  });
 });

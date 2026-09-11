@@ -40,6 +40,9 @@ describe("resolveLocation", () => {
     expect(resolveLocation("Bombay", "India")?.coords).toEqual(
       resolveLocation("Mumbai", "India")?.coords,
     );
+    expect(resolveLocation("Cochin", "India")?.coords).toEqual(
+      resolveLocation("Kochi", "India")?.coords,
+    );
   });
 
   it("resolves a city even when the country is spelled differently", () => {

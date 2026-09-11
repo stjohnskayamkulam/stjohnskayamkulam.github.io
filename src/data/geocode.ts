@@ -24,7 +24,9 @@ interface GeocodeResponse {
   results?: GeocodeHit[];
 }
 
-const STORAGE_PREFIX = "alumni-geo:v1:";
+// Bumped when the lookup rules change, so an already-open tab cannot keep
+// serving a coordinate the current rules would reject.
+const STORAGE_PREFIX = "alumni-geo:v2:";
 
 function readStored(key: string): LatLon | null | undefined {
   if (import.meta.env.MODE === "test") return undefined;
@@ -54,12 +56,16 @@ function writeStored(key: string, value: LatLon | null) {
   }
 }
 
+/**
+ * A hit in a country the member did not name is worse than no hit at all: the
+ * pin reads as fact and puts them on the wrong continent. GeoNames knows a
+ * "Cochin" in Saskatchewan and none in India, so an unmatched country has to
+ * give up here and let the caller fall back to the country centroid.
+ */
 function pickHit(hits: GeocodeHit[], countryKey: string): GeocodeHit | undefined {
   if (!hits.length) return undefined;
   if (!countryKey) return hits[0];
-  return (
-    hits.find((hit) => canonicalCountry(hit.country) === countryKey) ?? hits[0]
-  );
+  return hits.find((hit) => canonicalCountry(hit.country) === countryKey);
 }
 
 export async function geocodePlace(

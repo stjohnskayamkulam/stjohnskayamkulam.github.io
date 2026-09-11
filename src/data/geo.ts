@@ -84,6 +84,7 @@ export function canonicalCountry(country: string | undefined | null): string {
 const CITY_TABLE: Record<string, LatLon> = {
   /* Kerala */
   "kochi|india": [9.9312, 76.2673],
+  "cochin|india": [9.9312, 76.2673],
   "ernakulam|india": [9.9816, 76.2999],
   "thiruvananthapuram|india": [8.5241, 76.9366],
   "trivandrum|india": [8.5241, 76.9366],

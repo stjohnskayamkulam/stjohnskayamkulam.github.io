@@ -69,6 +69,11 @@ export function Footer() {
               </Link>
             </li>
             <li>
+              <Link to="/privacy" className="hover:text-brand">
+                Privacy notice
+              </Link>
+            </li>
+            <li>
               <Link to="/settings" className="hover:text-brand">
                 Privacy controls
               </Link>

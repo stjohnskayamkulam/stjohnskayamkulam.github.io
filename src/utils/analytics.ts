@@ -20,7 +20,9 @@ export type AnalyticsEvent =
   | "event_rsvp_cancelled"
   | "page_view"
   | "member_approved"
-  | "admin_action";
+  | "admin_action"
+  | "consent_given"
+  | "account_deleted";
 
 export type AnalyticsParams = Record<
   string,

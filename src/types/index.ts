@@ -35,6 +35,14 @@ export interface UserAccount {
   verifiedBy?: string | null;
   createdAt: string;
   lastLoginAt?: string;
+  /** Recorded yes to the current privacy notice. Missing on older accounts. */
+  consent?: AccountConsent | null;
+}
+
+/** A dated yes to a specific version of the public privacy notice. */
+export interface AccountConsent {
+  givenAt: string;
+  noticeVersion: string;
 }
 
 /* -------------------------------------------------------------------------- */

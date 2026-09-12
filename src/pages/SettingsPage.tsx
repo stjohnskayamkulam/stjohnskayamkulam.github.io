@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { CheckCircle2, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
@@ -28,9 +29,12 @@ const SCOPES: { value: Visibility; label: string }[] = [
 ];
 
 export function SettingsPage() {
-  const { session, loading, saveProfile, signOut } = useAuth();
+  const { session, loading, saveProfile, signOut, deleteAccount } = useAuth();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [visibility, setVisibility] = useState<FieldVisibility>(
     session?.profile?.fieldVisibility ?? DEFAULT_FIELD_VISIBILITY,
   );
@@ -56,7 +60,11 @@ export function SettingsPage() {
       <h1 className="text-3xl font-semibold">Settings</h1>
       <p className="mt-2 text-ink-soft">
         You decide what the rest of the network can see. Contact details stay
-        private by default.
+        private by default. The{" "}
+        <Link to="/privacy" className="font-medium text-brand hover:underline">
+          privacy notice
+        </Link>{" "}
+        explains what we keep and how to take it back.
       </p>
 
       <section className="card mt-8 p-6">
@@ -151,6 +159,52 @@ export function SettingsPage() {
           onClick={() => void signOut()}
         >
           Sign out
+        </Button>
+      </section>
+
+      <section className="card mt-6 border-red-200/80 p-6">
+        <h2 className="text-sm font-semibold tracking-[0.14em] text-red-800 uppercase">
+          Delete account
+        </h2>
+        <p className="mt-2 text-sm text-ink-soft">
+          This removes your profile from the directory, your account, and your
+          event RSVPs. It cannot be undone. You can join again later with
+          Google; that would be a new pending membership.
+        </p>
+        <label className="mt-4 flex cursor-pointer items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 shrink-0 rounded border-black/20 text-red-700 focus:ring-red-600"
+            checked={confirmDelete}
+            onChange={(event) => setConfirmDelete(event.target.checked)}
+          />
+          <span>I understand this permanently deletes my alumni account.</span>
+        </label>
+        {deleteError && (
+          <p className="mt-3 text-sm text-red-600" role="alert">
+            {deleteError}
+          </p>
+        )}
+        <Button
+          variant="danger"
+          className="mt-4"
+          loading={deleting}
+          disabled={!confirmDelete}
+          onClick={() => {
+            setDeleting(true);
+            setDeleteError(null);
+            void deleteAccount()
+              .catch((err) => {
+                setDeleteError(
+                  err instanceof Error
+                    ? err.message
+                    : "Could not delete the account. Try again.",
+                );
+              })
+              .finally(() => setDeleting(false));
+          }}
+        >
+          Delete my account
         </Button>
       </section>
     </div>

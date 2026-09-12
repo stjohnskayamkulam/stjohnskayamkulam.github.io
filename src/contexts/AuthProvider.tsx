@@ -47,6 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [session],
   );
 
+  const recordConsent = useCallback(async () => {
+    setSession(await authService.recordConsent());
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    await authService.deleteAccount();
+    setSession(null);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
@@ -61,6 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refresh,
       saveProfile,
+      recordConsent,
+      deleteAccount,
     }),
     [
       session,
@@ -69,6 +80,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refresh,
       saveProfile,
+      recordConsent,
+      deleteAccount,
     ],
   );
 

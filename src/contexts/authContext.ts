@@ -17,6 +17,8 @@ export interface AuthContextValue {
   refresh: () => Promise<void>;
   /** Updates the signed-in user's own profile and syncs the session copy. */
   saveProfile: (patch: Partial<AlumniProfile>) => Promise<void>;
+  recordConsent: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

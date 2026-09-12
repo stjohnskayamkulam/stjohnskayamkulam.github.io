@@ -29,6 +29,8 @@ function contextFor(tier: Tier): AuthContextValue {
     signOut: noop,
     refresh: noop,
     saveProfile: noop,
+    recordConsent: noop,
+    deleteAccount: noop,
   };
 }
 

@@ -42,11 +42,11 @@ export function AboutPage() {
         <section>
           <h2 className="text-2xl font-semibold">Who can join</h2>
           <p className="mt-4 leading-relaxed text-ink-soft">
-            Anyone who attended {school.schoolName}. Sign-in is Google only, and
-            every new member needs two existing alumni to vouch for them before
-            the directory unlocks. That step is deliberate: people share where
-            they live and what they do here, and it should only be visible to
-            people who actually went to the school.
+            Adults (18 or older) who attended {school.schoolName}. Sign-in is
+            Google only, and every new member needs two existing alumni to vouch
+            for them before the directory unlocks. That step is deliberate:
+            people share where they live and what they do here, and it should
+            only be visible to people who actually went to the school.
           </p>
         </section>
 
@@ -60,8 +60,12 @@ export function AboutPage() {
             <p className="mt-2 text-sm leading-relaxed text-ink-soft">
               Email addresses and phone numbers are private by default and never
               appear in search results. Every other field can be limited to your
-              own class or hidden entirely, and you can change all of it at any
-              time from your settings.
+              own class or hidden entirely. The{" "}
+              <Link to="/privacy" className="font-medium text-brand hover:underline">
+                privacy notice
+              </Link>{" "}
+              explains what we keep; you can change visibility or delete the
+              account from settings.
             </p>
             <Link
               to="/settings"

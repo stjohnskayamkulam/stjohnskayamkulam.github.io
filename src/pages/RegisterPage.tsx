@@ -4,21 +4,25 @@ import { ShieldCheck } from "lucide-react";
 import { school } from "@/config/school";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
+import { ConsentCheckbox } from "@/components/auth/ConsentCheckbox";
 import { REQUIRED_APPROVALS } from "@/types";
 import { authErrorMessage } from "@/utils/authErrors";
 
 export function RegisterPage() {
-  const { signInWithGoogle, isAuthenticated } = useAuth();
+  const { signInWithGoogle, recordConsent, isAuthenticated } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
 
   if (isAuthenticated) return <Navigate to="/" replace />;
 
   async function handleGoogle() {
+    if (!agreed) return;
     setBusy(true);
     setError(null);
     try {
       await signInWithGoogle();
+      await recordConsent();
     } catch (err) {
       setError(authErrorMessage(err));
     } finally {
@@ -45,9 +49,11 @@ export function RegisterPage() {
         </div>
 
         <div className="card space-y-5 p-7">
+          <ConsentCheckbox checked={agreed} onChange={setAgreed} />
           <Button
             className="w-full"
             loading={busy}
+            disabled={!agreed}
             onClick={() => void handleGoogle()}
           >
             Continue with Google

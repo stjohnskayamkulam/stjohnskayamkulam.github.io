@@ -8,6 +8,7 @@ import {
 } from "@/components/auth/RouteGuards";
 import { HomePage } from "@/pages/HomePage";
 import { AboutPage } from "@/pages/AboutPage";
+import { PrivacyPage } from "@/pages/PrivacyPage";
 import { AlumniDirectoryPage } from "@/pages/AlumniDirectoryPage";
 import { AlumniProfilePage } from "@/pages/AlumniProfilePage";
 import { ApprovalsPage } from "@/pages/ApprovalsPage";
@@ -29,6 +30,7 @@ export function App() {
         {/* Public — enough to make the network worth joining, no personal data. */}
         <Route index element={<HomePage />} />
         <Route path="about" element={<AboutPage />} />
+        <Route path="privacy" element={<PrivacyPage />} />
         <Route path="events" element={<EventsPage />} />
         <Route path="events/:id" element={<EventDetailPage />} />
         <Route path="login" element={<LoginPage />} />

@@ -2,6 +2,7 @@
 import { getAuthProvider } from "@/services";
 import type { Session } from "@/services/providers/types";
 import { track } from "@/utils/analytics";
+import * as consentService from "@/services/consentService";
 
 export function subscribeToSession(
   listener: (session: Session | null) => void,
@@ -34,3 +35,6 @@ export async function signOut(): Promise<void> {
 export async function refreshSession(): Promise<Session | null> {
   return (await getAuthProvider()).refresh();
 }
+
+export const recordConsent = consentService.recordConsent;
+export const deleteAccount = consentService.deleteAccount;

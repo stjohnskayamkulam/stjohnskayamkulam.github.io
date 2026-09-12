@@ -29,6 +29,8 @@ import {
   setDoc,
   updateDoc,
   where,
+  deleteDoc,
+  Timestamp,
 } from 'firebase/firestore';
 
 // Read the port the CLI was told to use rather than repeating it, so the two
@@ -389,6 +391,46 @@ const checks = [
           ),
         ),
       );
+    },
+  ],
+  [
+    'a member may record consent on their own account',
+    async () => {
+      await assertSucceeds(
+        updateDoc(doc(as(MARIA), 'users', MARIA), {
+          consent: {
+            givenAt: Timestamp.now(),
+            noticeVersion: '2026-09-12',
+          },
+        }),
+      );
+    },
+  ],
+  [
+    'a member cannot smuggle a role change in with consent',
+    async () => {
+      await assertFails(
+        updateDoc(doc(as(MARIA), 'users', MARIA), {
+          role: 'admin',
+          consent: {
+            givenAt: Timestamp.now(),
+            noticeVersion: '2026-09-12',
+          },
+        }),
+      );
+    },
+  ],
+  [
+    'a member may delete their own account and profile',
+    async () => {
+      await assertSucceeds(deleteDoc(doc(as(MARIA), 'profiles', MARIA)));
+      await assertSucceeds(deleteDoc(doc(as(MARIA), 'users', MARIA)));
+    },
+  ],
+  [
+    "a member cannot delete someone else's profile",
+    async () => {
+      await assertFails(deleteDoc(doc(as(JOHN), 'profiles', MARIA)));
     },
   ],
 ];

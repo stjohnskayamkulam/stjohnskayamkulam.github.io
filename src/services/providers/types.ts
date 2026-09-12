@@ -32,6 +32,10 @@ export interface AuthProvider {
   signOut(): Promise<void>;
   /** Re-reads the account/profile pair, e.g. after an admin verifies someone. */
   refresh(): Promise<Session | null>;
+  /** Writes a dated yes to the current privacy notice on the signed-in account. */
+  recordConsent(): Promise<Session>;
+  /** Erases the signed-in member's account, profile and event RSVPs. */
+  deleteAccount(): Promise<void>;
 }
 
 export interface ListOptions {

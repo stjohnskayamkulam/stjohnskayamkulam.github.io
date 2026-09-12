@@ -5,6 +5,7 @@
  * bootstrap superadmin so admin screens remain reachable in tests.
  */
 import { isSuperAdminEmail, SUPERADMIN_EMAIL } from "@/config/admins";
+import { PRIVACY_NOTICE_VERSION } from "@/config/privacy";
 import { DEFAULT_FIELD_VISIBILITY, REQUIRED_APPROVALS } from "@/types";
 import type {
   AdminStats,
@@ -201,6 +202,38 @@ export const mockAuthProvider: AuthProvider = {
     const session = uid ? buildSession(uid) : null;
     emit(session);
     return session;
+  },
+
+  async recordConsent() {
+    const uid = current?.account.uid ?? readStoredUid();
+    if (!uid) throw new Error("Not signed in");
+    const account = db.accounts.find((row) => row.uid === uid);
+    if (!account) throw new Error("Not signed in");
+    account.consent = {
+      givenAt: new Date().toISOString(),
+      noticeVersion: PRIVACY_NOTICE_VERSION,
+    };
+    const session = buildSession(uid);
+    emit(session);
+    if (!session) throw new Error("Not signed in");
+    return session;
+  },
+
+  async deleteAccount() {
+    const uid = current?.account.uid ?? readStoredUid();
+    if (!uid) throw new Error("Not signed in");
+    db.accounts = db.accounts.filter((row) => row.uid !== uid);
+    db.profiles = db.profiles.filter((row) => row.uid !== uid);
+    for (const [eventId, rows] of db.attendees) {
+      const next = rows.filter((row) => row.uid !== uid);
+      if (next.length !== rows.length) {
+        db.attendees.set(eventId, next);
+        const event = db.events.find((row) => row.id === eventId);
+        if (event) event.attendeeCount = Math.max(0, event.attendeeCount - 1);
+      }
+    }
+    writeStoredUid(null);
+    emit(null);
   },
 };
 

@@ -55,6 +55,14 @@ export function LoginPage() {
             Continue with Google
           </Button>
           {error && <p className="text-sm text-red-600">{error}</p>}
+          <p className="text-center text-sm text-ink-soft">
+            The{" "}
+            <Link to="/privacy" className="font-medium text-brand hover:underline">
+              privacy notice
+            </Link>{" "}
+            explains what we keep. If you have not agreed yet, we will ask once
+            after sign-in.
+          </p>
         </div>
 
         <p className="mt-6 text-center text-sm text-ink-soft">

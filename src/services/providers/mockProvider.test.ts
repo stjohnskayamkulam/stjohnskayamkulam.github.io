@@ -6,11 +6,13 @@
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  mockAuthProvider,
   mockDataProvider,
   nextMilestoneReunion,
   putMockMember,
   resetMockStore,
 } from "./mockProvider";
+import { PRIVACY_NOTICE_VERSION } from "@/config/privacy";
 import {
   DEFAULT_FIELD_VISIBILITY,
   type AlumniProfile,
@@ -426,5 +428,43 @@ describe("class years", () => {
       2010,
     ]);
     expect((await mockDataProvider.getCommunityStats()).classCount).toBe(1);
+  });
+});
+
+describe("consent and account deletion", () => {
+  it("records a dated yes against the current notice", async () => {
+    const session = await mockAuthProvider.signInWithGoogle();
+    expect(session.account.consent).toBeUndefined();
+    const next = await mockAuthProvider.recordConsent();
+    expect(next.account.consent?.noticeVersion).toBe(PRIVACY_NOTICE_VERSION);
+    expect(next.account.consent?.givenAt).toBeTruthy();
+  });
+
+  it("removes the account, profile and event RSVPs", async () => {
+    const session = await mockAuthProvider.signInWithGoogle();
+    const uid = session.account.uid;
+    const event = await mockDataProvider.createEvent({
+      title: "Reunion",
+      description: "",
+      date: "2027-01-01",
+      startTime: "18:00",
+      location: "Kayamkulam",
+      eventType: "reunion",
+      organizer: "Alumni",
+      createdBy: uid,
+    });
+    await mockDataProvider.rsvp(event.id, {
+      uid,
+      displayName: session.account.displayName,
+      gradYear: 2001,
+      rsvpAt: now,
+    });
+    expect(await mockDataProvider.listAttendees(event.id)).toHaveLength(1);
+
+    await mockAuthProvider.deleteAccount();
+    expect(await mockAuthProvider.refresh()).toBeNull();
+    expect(await mockDataProvider.getProfile(uid)).toBeNull();
+    expect(await mockDataProvider.listAttendees(event.id)).toHaveLength(0);
+    expect((await mockDataProvider.getEvent(event.id))?.attendeeCount).toBe(0);
   });
 });

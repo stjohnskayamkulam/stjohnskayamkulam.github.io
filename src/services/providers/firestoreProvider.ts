@@ -13,6 +13,7 @@
  */
 import {
   GoogleAuthProvider,
+  deleteUser,
   getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
@@ -44,6 +45,7 @@ import {
 } from "firebase/firestore";
 import { getFirebase } from "@/services/firebase";
 import { isSuperAdminEmail } from "@/config/admins";
+import { PRIVACY_NOTICE_VERSION } from "@/config/privacy";
 import { parseClassesAttended } from "@/config/schoolClasses";
 import { shouldFallbackToRedirect } from "@/utils/authErrors";
 import { isRecordedGradYear } from "@/utils/profile";
@@ -102,6 +104,13 @@ function toAccount(uid: string, data: DocumentData): UserAccount {
     verifiedBy: data.verifiedBy ?? null,
     createdAt: iso(data.createdAt),
     lastLoginAt: data.lastLoginAt ? iso(data.lastLoginAt) : undefined,
+    consent:
+      data.consent?.givenAt && data.consent?.noticeVersion
+        ? {
+            givenAt: iso(data.consent.givenAt),
+            noticeVersion: String(data.consent.noticeVersion),
+          }
+        : undefined,
   };
 }
 
@@ -254,6 +263,30 @@ async function loadSession(user: User): Promise<Session> {
   };
 }
 
+async function eraseMemberData(uid: string): Promise<void> {
+  const { db } = getFirebase();
+  const eventsSnap = await getDocs(
+    query(collection(db, "events"), fsLimit(500)),
+  );
+  for (const eventDoc of eventsSnap.docs) {
+    const attendeeRef = doc(db, "events", eventDoc.id, "attendees", uid);
+    const attendeeSnap = await getDoc(attendeeRef);
+    if (!attendeeSnap.exists()) continue;
+    const batch = writeBatch(db);
+    batch.delete(attendeeRef);
+    batch.update(doc(db, "events", eventDoc.id), {
+      attendeeCount: increment(-1),
+    });
+    await batch.commit();
+  }
+  const profileRef = doc(db, "profiles", uid);
+  const accountRef = doc(db, "users", uid);
+  const closing = writeBatch(db);
+  closing.delete(profileRef);
+  closing.delete(accountRef);
+  await closing.commit();
+}
+
 export const firestoreAuthProvider: AuthProvider = {
   subscribe(listener) {
     const { auth } = getFirebase();
@@ -306,6 +339,41 @@ export const firestoreAuthProvider: AuthProvider = {
     const { auth } = getFirebase();
     const user = auth.currentUser;
     return user ? loadSession(user) : null;
+  },
+
+  async recordConsent() {
+    const { auth, db } = getFirebase();
+    const user = auth.currentUser;
+    if (!user) throw new Error("Not signed in");
+    await updateDoc(doc(db, "users", user.uid), {
+      consent: {
+        givenAt: serverTimestamp(),
+        noticeVersion: PRIVACY_NOTICE_VERSION,
+      },
+    });
+    return loadSession(user);
+  },
+
+  async deleteAccount() {
+    const { auth } = getFirebase();
+    const user = auth.currentUser;
+    if (!user) throw new Error("Not signed in");
+    await eraseMemberData(user.uid);
+    try {
+      await deleteUser(user);
+    } catch (err) {
+      const code =
+        err && typeof err === "object" && "code" in err
+          ? String(err.code)
+          : "";
+      if (code === "auth/requires-recent-login") {
+        throw new Error(
+          "Sign in again, then delete your account. Google needs a recent sign-in before it will erase the login.",
+          { cause: err },
+        );
+      }
+      throw err;
+    }
   },
 };
 

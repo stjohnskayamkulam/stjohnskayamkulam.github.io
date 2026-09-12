@@ -110,13 +110,24 @@ service cloud.firestore {
                              && request.resource.data.status == 'pending')
                        );
 
-      // Self-updates may touch presentation fields only. `role` and `status`
-      // are absent from this list, so a member cannot promote themselves even
-      // by replaying an otherwise legitimate write.
+      // Self-updates may touch presentation fields and a recorded consent yes.
+      // `role` and `status` are absent from this list, so a member cannot
+      // promote themselves even by replaying an otherwise legitimate write.
       allow update: if isSelf(uid)
                     && request.resource.data.diff(resource.data)
                          .affectedKeys()
-                         .hasOnly(['displayName', 'photoURL', 'lastLoginAt']);
+                         .hasOnly(['displayName', 'photoURL', 'lastLoginAt', 'consent'])
+                    && (
+                         !request.resource.data.diff(resource.data)
+                           .affectedKeys().hasAny(['consent'])
+                         || (
+                              request.resource.data.consent.keys()
+                                .hasOnly(['givenAt', 'noticeVersion'])
+                              && request.resource.data.consent.noticeVersion is string
+                              && request.resource.data.consent.noticeVersion.size() > 0
+                              && request.resource.data.consent.givenAt is timestamp
+                            )
+                       );
 
       // The bootstrap account may promote its own record if it signed in
       // before this exception existed.
@@ -139,7 +150,7 @@ service cloud.firestore {
       allow update: if isAdmin()
                     && request.resource.data.role == resource.data.role;
 
-      allow delete: if false;
+      allow delete: if isSelf(uid);
     }
 
     /* ---------------------------------------------------------------- */
@@ -196,7 +207,7 @@ service cloud.firestore {
                              ? 'verified' : 'pending');
 
       allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow delete: if isSelf(uid) || isAdmin();
     }
 
     /* ---------------------------------------------------------------- */

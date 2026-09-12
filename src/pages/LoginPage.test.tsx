@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthContext, type AuthContextValue } from "@/contexts/authContext";
 import { LoginPage } from "./LoginPage";
@@ -19,6 +20,8 @@ function context(partial: Partial<AuthContextValue>): AuthContextValue {
     signOut: noop,
     refresh: noop,
     saveProfile: noop,
+    recordConsent: noop,
+    deleteAccount: noop,
     ...partial,
   };
 }
@@ -71,5 +74,22 @@ describe("post-signin redirects", () => {
     renderAuthPage("register", context({ isAuthenticated: true }));
     expect(screen.getByText("Home page")).toBeInTheDocument();
     expect(screen.queryByText("Full profile page")).not.toBeInTheDocument();
+  });
+});
+
+describe("join consent", () => {
+  it("does not start Google sign-in until the notice is accepted", async () => {
+    const user = userEvent.setup();
+    const signInWithGoogle = vi.fn(async () => {});
+    renderAuthPage(
+      "register",
+      context({ signInWithGoogle }),
+    );
+    const continueButton = screen.getByRole("button", {
+      name: "Continue with Google",
+    });
+    expect(continueButton).toBeDisabled();
+    await user.click(continueButton);
+    expect(signInWithGoogle).not.toHaveBeenCalled();
   });
 });

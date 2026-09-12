@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthContext, type AuthContextValue } from "@/contexts/authContext";
 import { DEFAULT_FIELD_VISIBILITY, type AlumniProfile } from "@/types";
+import { PRIVACY_NOTICE_VERSION } from "@/config/privacy";
 import { AppLayout } from "./AppLayout";
 
 vi.mock("@/utils/analytics", () => ({
@@ -31,11 +32,17 @@ const complete: AlumniProfile = {
   updatedAt: "2020-01-01T00:00:00.000Z",
 };
 
+const currentConsent = {
+  givenAt: "2026-09-12T00:00:00.000Z",
+  noticeVersion: PRIVACY_NOTICE_VERSION,
+};
+
 const noop = async () => {};
 
 function renderLayout(
   profile: AlumniProfile | null,
   path = "/",
+  consented = true,
 ) {
   const auth = {
     session: profile
@@ -44,6 +51,7 @@ function renderLayout(
             uid: profile.uid,
             displayName: profile.fullName,
             status: profile.status,
+            consent: consented ? currentConsent : undefined,
           },
           profile,
         }
@@ -57,6 +65,8 @@ function renderLayout(
     signOut: noop,
     refresh: noop,
     saveProfile: noop,
+    recordConsent: noop,
+    deleteAccount: noop,
   } as unknown as AuthContextValue;
 
   return render(
@@ -66,6 +76,7 @@ function renderLayout(
           <Route element={<AppLayout />}>
             <Route index element={<p>Home page</p>} />
             <Route path="alumni" element={<p>Directory page</p>} />
+            <Route path="privacy" element={<p>Privacy notice page</p>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -114,5 +125,24 @@ describe("AppLayout required profile gate", () => {
       screen.getByRole("dialog", { name: "Complete your required details" }),
     ).toBeInTheDocument();
     expect(screen.queryByText("Home page")).not.toBeInTheDocument();
+  });
+});
+
+describe("AppLayout consent gate", () => {
+  it("asks an existing member to agree before the rest of the site", () => {
+    renderLayout(complete, "/", false);
+    expect(
+      screen.getByRole("dialog", { name: "Before you continue" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Home page")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("dialog", { name: "Complete your required details" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lets them read the privacy notice without the overlay", () => {
+    renderLayout(complete, "/privacy", false);
+    expect(screen.getByText("Privacy notice page")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
